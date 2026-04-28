@@ -1,0 +1,18 @@
+# Bỏ qua rác của Frontend (React)
+ecommerce-frontend/node_modules/
+ecommerce-frontend/dist/
+
+# Bỏ qua rác của Backend (Spring Boot)
+prediction-backend/target/
+prediction-backend/.mvn/
+*.jar
+
+# Bỏ qua rác của AI (Python)
+ai-service/__pycache__/
+*.pyc
+ai-service/venv/
+ai-service/.env
+
+# Bỏ qua rác hệ điều hành & IDE
+.vscode/
+.DS_Store
