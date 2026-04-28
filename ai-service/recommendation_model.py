@@ -1,10 +1,12 @@
+import os
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from pymongo import MongoClient
 import numpy as np
 
 print("Đang kết nối Database...")
-client = MongoClient("mongodb://localhost:27017/") 
+mongo_uri = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+client = MongoClient(mongo_uri) 
 
 # SỬA 1: Trỏ đúng vào tên Database trong ảnh của bạn
 db = client["ecommerce_behavior"] 
