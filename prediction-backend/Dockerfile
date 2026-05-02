@@ -12,4 +12,4 @@ COPY --from=build /app/target/*.jar app.jar
 # Mở cổng mặc định của Spring Boot
 EXPOSE 8080
 # Lệnh chạy Spring Boot
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Xmx256m", "-Xms128m", "-XX:MaxMetaspaceSize=128m", "-Xss512k", "-jar", "app.jar"]
