@@ -23,7 +23,7 @@ function App() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
-    fetch("http://localhost:8888/api/auth/login", {
+    fetch("https://ecom-backend-api-ijgl.onrender.com/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

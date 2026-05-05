@@ -42,12 +42,21 @@ public class PaymentController {
             vnp_Params.put("vnp_ReturnUrl", vnp_ReturnUrl);
             vnp_Params.put("vnp_IpAddr", "127.0.0.1");
 
-            // Cấu hình thời gian tạo và hết hạn của mã QR
-            Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+            // =========================================================
+            // FIX LỖI TIMEZONE VNPAY QUÁ HẠN 15 PHÚT
+            // =========================================================
+            // 1. Khởi tạo lịch với chuẩn múi giờ Việt Nam
+            Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
             SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+            
+            // 2. Ép cứng bộ định dạng chuỗi cũng phải dùng giờ Việt Nam
+            formatter.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+            
+            // 3. Ghi nhận thời gian tạo và thời gian hết hạn (+15 phút)
             vnp_Params.put("vnp_CreateDate", formatter.format(cld.getTime()));
             cld.add(Calendar.MINUTE, 15);
             vnp_Params.put("vnp_ExpireDate", formatter.format(cld.getTime()));
+            // =========================================================
 
             // Chuẩn bị dữ liệu để băm bảo mật
             List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());

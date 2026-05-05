@@ -22,7 +22,7 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    // API Đăng nhập: POST http://localhost:8888/api/auth/login
+    // API Đăng nhập: POST https://ecom-backend-api-ijgl.onrender.com/api/auth/login
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
         // 1. Tìm user trong Database
