@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 
 # 1. Kéo dữ liệu từ cổng API Spring Boot của bạn
-url = "https://ecom-backend-api-ijgl.onrender.com/api/recommendation/matrix"
+url = "http://localhost:8888/api/recommendation/matrix"
 response = requests.get(url)
 
 if response.status_code == 200:

@@ -59,7 +59,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
     if (vnp_ResponseCode && vnp_TxnRef) {
       const orderId = vnp_TxnRef.split("_")[0];
       fetch(
-        `https://ecom-backend-api-ijgl.onrender.com/api/orders/payment-confirm/${orderId}?responseCode=${vnp_ResponseCode}`,
+        `http://localhost:8888/api/orders/payment-confirm/${orderId}?responseCode=${vnp_ResponseCode}`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${userAuth.token}` },
@@ -91,9 +91,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
 
   useEffect(() => {
     if (selectedProduct) {
-      fetch(
-        `https://ecom-backend-api-ijgl.onrender.com/api/reviews/product/${selectedProduct.id}`,
-      )
+      fetch(`http://localhost:8888/api/reviews/product/${selectedProduct.id}`)
         .then((res) => res.json())
         .then((data) => setCurrentReviews(data))
         .catch(console.error);
@@ -104,7 +102,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
 
   // CÁC HÀM XỬ LÝ API
   const fetchAllProducts = () => {
-    fetch("https://ecom-backend-api-ijgl.onrender.com/api/products", {
+    fetch("http://localhost:8888/api/products", {
       headers: { Authorization: `Bearer ${userAuth.token}` },
     })
       .then((res) => res.json())
@@ -112,34 +110,27 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
   };
 
   const fetchUserOrders = () => {
-    fetch(
-      `https://ecom-backend-api-ijgl.onrender.com/api/orders/user/${userAuth.userId}`,
-      {
-        headers: { Authorization: `Bearer ${userAuth.token}` },
-      },
-    )
+    fetch(`http://localhost:8888/api/orders/user/${userAuth.userId}`, {
+      headers: { Authorization: `Bearer ${userAuth.token}` },
+    })
       .then((res) => res.json())
       .then((data) => setUserOrders(data));
   };
 
   const fetchRecommendations = () => {
-    fetch(
-      `https://ecom-backend-api-ijgl.onrender.com/api/recommendation/display/${userAuth.userId}`,
-    )
+    fetch(`http://localhost:8888/api/recommendation/display/${userAuth.userId}`)
       .then((res) => res.json())
       .then((data) => setRecommendations(data));
   };
 
   const fetchCartHistory = () => {
-    fetch(
-      `https://ecom-backend-api-ijgl.onrender.com/api/activities/cart/${userAuth.userId}`,
-    )
+    fetch(`http://localhost:8888/api/activities/cart/${userAuth.userId}`)
       .then((res) => res.json())
       .then((data) => setCartItems(data));
   };
 
   const trackActivity = (productId: number, action: string) => {
-    fetch("https://ecom-backend-api-ijgl.onrender.com/api/activities/track", {
+    fetch("http://localhost:8888/api/activities/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -166,7 +157,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
 
     // 2. Gọi API báo Backend xóa thật trong DB
     fetch(
-      `https://ecom-backend-api-ijgl.onrender.com/api/activities/cart/${userAuth.userId}/${productId}`,
+      `http://localhost:8888/api/activities/cart/${userAuth.userId}/${productId}`,
       {
         method: "DELETE",
         headers: { Authorization: `Bearer ${userAuth.token}` },
@@ -178,17 +169,14 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
     if (cartItems.length === 0) return toast.error("Giỏ hàng đang trống!");
 
     const loadingToast = toast.loading("Đang tạo đơn hàng...");
-    fetch(
-      `https://ecom-backend-api-ijgl.onrender.com/api/orders/checkout/${userAuth.userId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userAuth.token}`,
-        },
-        body: JSON.stringify(cartItems),
+    fetch(`http://localhost:8888/api/orders/checkout/${userAuth.userId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${userAuth.token}`,
       },
-    )
+      body: JSON.stringify(cartItems),
+    })
       .then((res) => res.json())
       .then((order) => {
         cartItems.forEach((item) => trackActivity(item.id, "purchase"));
@@ -201,7 +189,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
           0,
         );
         fetch(
-          `https://ecom-backend-api-ijgl.onrender.com/api/payment/create_url?amount=${totalAmount}&orderId=${order.id}`,
+          `http://localhost:8888/api/payment/create_url?amount=${totalAmount}&orderId=${order.id}`,
           { headers: { Authorization: `Bearer ${userAuth.token}` } },
         )
           .then((res) => res.json())
@@ -223,7 +211,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
       rating: reviewForm.rating,
       comment: reviewForm.comment,
     };
-    fetch("https://ecom-backend-api-ijgl.onrender.com/api/reviews", {
+    fetch("http://localhost:8888/api/reviews", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

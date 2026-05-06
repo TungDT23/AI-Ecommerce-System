@@ -22,7 +22,7 @@ public class RecommendationController {
 
     /**
      * 1. API Lấy điểm quan tâm của một User cụ thể từ MongoDB
-     * URL: https://ecom-backend-api-ijgl.onrender.com/api/recommendation/interest/{userId}
+     * URL: http://localhost:8888/api/recommendation/interest/{userId}
      */
     @GetMapping("/interest/{userId}")
     public List<InterestScoreDTO> getInterestScore(@PathVariable Integer userId) {
@@ -31,7 +31,7 @@ public class RecommendationController {
 
     /**
      * 2. API Xuất toàn bộ ma trận điểm số của hệ thống cho Python AI
-     * URL: https://ecom-backend-api-ijgl.onrender.com/api/recommendation/matrix
+     * URL: http://localhost:8888/api/recommendation/matrix
      */
     @GetMapping("/matrix")
     public List<InterestScoreDTO> getAllInterestScores() {
@@ -40,7 +40,7 @@ public class RecommendationController {
 
     /**
      * 3. API CHÍNH CHO FRONTEND: Lấy danh sách gợi ý đã được làm đẹp (Full thông tin SP + Điểm tin cậy)
-     * URL: https://ecom-backend-api-ijgl.onrender.com/api/recommendation/display/{userId}
+     * URL: http://localhost:8888/api/recommendation/display/{userId}
      * Luồng: Gọi sang Python (cổng 5000) -> Lấy ID -> Truy vấn MySQL -> Trả về kết quả
      */
     @GetMapping("/display/{userId}")

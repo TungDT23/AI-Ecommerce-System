@@ -28,7 +28,7 @@ public class UserActivityController {
 
     // 2. CÁC HÀM XỬ LÝ (METHODS) BÊN DƯỚI
     
-    // API lấy lịch sử giỏ hàng: GET https://ecom-backend-api-ijgl.onrender.com/api/activities/cart/{userId}
+    // API lấy lịch sử giỏ hàng: GET http://localhost:8888/api/activities/cart/{userId}
     @GetMapping("/cart/{userId}")
     public List<Product> getCartHistory(@PathVariable Integer userId) {
         return userActivityRepository.findByUserId(userId).stream()
@@ -39,7 +39,7 @@ public class UserActivityController {
             .collect(Collectors.toList());
     }
 
-    // API nhận log hành vi từ Frontend: POST https://ecom-backend-api-ijgl.onrender.com/api/activities/track
+    // API nhận log hành vi từ Frontend: POST http://localhost:8888/api/activities/track
     @PostMapping("/track")
     public UserActivity trackActivity(@RequestBody UserActivity activity) {
         // Tự động gán thời gian hiện tại lúc click

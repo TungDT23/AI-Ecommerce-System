@@ -51,7 +51,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
 
   // EFFECTS: NẠP DỮ LIỆU KHI VÀO TRANG ADMIN
   useEffect(() => {
-    fetch("https://ecom-backend-api-ijgl.onrender.com/api/admin/activities", {
+    fetch("http://localhost:8888/api/admin/activities", {
       headers: { Authorization: `Bearer ${userAuth.token}` },
     })
       .then((res) => res.json())
@@ -69,7 +69,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
 
   // CÁC HÀM GỌI API
   const fetchAdminProducts = () => {
-    fetch("https://ecom-backend-api-ijgl.onrender.com/api/admin/products", {
+    fetch("http://localhost:8888/api/admin/products", {
       headers: { Authorization: `Bearer ${userAuth.token}` },
     })
       .then((res) => res.json())
@@ -77,7 +77,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
   };
 
   const fetchAdminOrders = () => {
-    fetch("https://ecom-backend-api-ijgl.onrender.com/api/orders/admin/all", {
+    fetch("http://localhost:8888/api/orders/admin/all", {
       headers: { Authorization: `Bearer ${userAuth.token}` },
     })
       .then((res) => res.json())
@@ -86,7 +86,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
 
   const updateOrderStatus = (orderId: number, status: string) => {
     fetch(
-      `https://ecom-backend-api-ijgl.onrender.com/api/orders/admin/${orderId}/status?status=${status}`,
+      `http://localhost:8888/api/orders/admin/${orderId}/status?status=${status}`,
       {
         method: "PUT",
         headers: { Authorization: `Bearer ${userAuth.token}` },
@@ -102,8 +102,8 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
     const url = editingId
-      ? `https://ecom-backend-api-ijgl.onrender.com/api/admin/products/${editingId}`
-      : `https://ecom-backend-api-ijgl.onrender.com/api/admin/products`;
+      ? `http://localhost:8888/api/admin/products/${editingId}`
+      : `http://localhost:8888/api/admin/products`;
     fetch(url, {
       method: editingId ? "PUT" : "POST",
       headers: {
@@ -133,13 +133,10 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
 
   const handleDeleteProduct = (id: number) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) return;
-    fetch(
-      `https://ecom-backend-api-ijgl.onrender.com/api/admin/products/${id}`,
-      {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${userAuth.token}` },
-      },
-    ).then((res) => {
+    fetch(`http://localhost:8888/api/admin/products/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${userAuth.token}` },
+    }).then((res) => {
       if (res.ok) {
         fetchAdminProducts();
         toast.success("Đã xóa sản phẩm!");
