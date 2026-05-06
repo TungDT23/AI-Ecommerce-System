@@ -89,12 +89,23 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
     fetchAllProducts();
   }, []);
 
+  // FIX LỖI SẬP WEB TRẮNG MÀN HÌNH Ở ĐÂY
   useEffect(() => {
     if (selectedProduct) {
       fetch(`http://localhost:8888/api/reviews/product/${selectedProduct.id}`)
         .then((res) => res.json())
-        .then((data) => setCurrentReviews(data))
-        .catch(console.error);
+        .then((data) => {
+          // Chỉ cập nhật nếu data trả về đúng là một Mảng (Array)
+          if (Array.isArray(data)) {
+            setCurrentReviews(data);
+          } else {
+            setCurrentReviews([]); // Lỗi thì gán mảng rỗng
+          }
+        })
+        .catch((err) => {
+          console.error("Lỗi lấy review:", err);
+          setCurrentReviews([]);
+        });
     } else {
       setCurrentReviews([]);
     }
@@ -147,7 +158,6 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
     });
   };
 
-  // MỚI: HÀM XÓA SẢN PHẨM KHỎI GIỎ HÀNG
   const handleRemoveFromCart = (productId: number, itemIndex: number) => {
     // 1. Xóa tạm thời trên giao diện cho mượt
     const newCart = [...cartItems];
@@ -223,6 +233,16 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
         toast.success("Cảm ơn bạn đã đánh giá!");
         setReviewForm({ rating: 5, comment: "", productId: null });
         fetchUserOrders();
+        // Cập nhật lại list review của sản phẩm hiện tại luôn cho xịn
+        if (selectedProduct) {
+          fetch(
+            `http://localhost:8888/api/reviews/product/${selectedProduct.id}`,
+          )
+            .then((res) => res.json())
+            .then((data) => {
+              if (Array.isArray(data)) setCurrentReviews(data);
+            });
+        }
       }
     });
   };
