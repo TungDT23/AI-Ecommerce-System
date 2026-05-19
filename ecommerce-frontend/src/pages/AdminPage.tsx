@@ -27,14 +27,12 @@ interface UserData {
   token: string;
 }
 
-// Component nhận vào 2 props từ App.tsx: thông tin user và hàm đăng xuất
 interface AdminPageProps {
   userAuth: UserData;
   onLogout: () => void;
 }
 
 const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
-  // STATE CỦA RIÊNG ADMIN
   const [adminTab, setAdminTab] = useState<"dashboard" | "products" | "orders">(
     "dashboard",
   );
@@ -49,7 +47,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
   });
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // EFFECTS: NẠP DỮ LIỆU KHI VÀO TRANG ADMIN
+  // EFFECTS
   useEffect(() => {
     fetch("http://localhost:8888/api/admin/activities", {
       headers: { Authorization: `Bearer ${userAuth.token}` },
@@ -67,7 +65,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
     fetchAdminOrders();
   }, [userAuth]);
 
-  // CÁC HÀM GỌI API
+  // API CAllS
   const fetchAdminProducts = () => {
     fetch("http://localhost:8888/api/admin/products", {
       headers: { Authorization: `Bearer ${userAuth.token}` },
@@ -162,7 +160,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
       { name: "Mua Hàng", value: purchases },
     ];
   };
-  const PIE_COLORS = ["#3b82f6", "#f59e0b", "#10b981"];
+  const PIE_COLORS = ["#6366f1", "#f59e0b", "#10b981"]; // Đổi màu Xanh dương thành Xanh Chàm (Indigo)
 
   const getBarChartData = () => {
     const productStats: any = {};
@@ -170,7 +168,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
       const pid = act.productId;
       if (!productStats[pid])
         productStats[pid] = {
-          name: `Mã SP #${pid}`,
+          name: `SP #${pid}`,
           view: 0,
           cart: 0,
           purchase: 0,
@@ -185,49 +183,73 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
-          <div className="flex items-center gap-6">
-            <h1 className="text-3xl font-bold text-blue-400">Admin Panel</h1>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setAdminTab("dashboard")}
-                className={`px-4 py-2 rounded-lg font-bold transition-colors ${adminTab === "dashboard" ? "bg-blue-600" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
-              >
-                📡 AI Dash
-              </button>
-              <button
-                onClick={() => setAdminTab("products")}
-                className={`px-4 py-2 rounded-lg font-bold transition-colors ${adminTab === "products" ? "bg-green-600" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
-              >
-                📦 Kho hàng
-              </button>
-              <button
-                onClick={() => {
-                  setAdminTab("orders");
-                  fetchAdminOrders();
-                }}
-                className={`px-4 py-2 rounded-lg font-bold transition-colors ${adminTab === "orders" ? "bg-yellow-600" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
-              >
-                🧾 Đơn hàng
-              </button>
+    <div className="min-h-screen bg-slate-50 font-sans text-gray-800 flex flex-col">
+      {/* HEADER STICKY (NỀN TỐI QUYỀN LỰC) */}
+      <header className="bg-slate-900 text-white shadow-md sticky top-0 z-40">
+        <div className="max-w-[1200px] mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-500 text-white rounded flex items-center justify-center font-black text-xl shadow-inner">
+              AD
+            </div>
+            <div>
+              <h1 className="text-xl font-bold leading-none tracking-wide text-indigo-50">
+                Kênh Người Bán
+              </h1>
+              <p className="text-[11px] text-slate-400 mt-0.5 uppercase tracking-widest">
+                E-Commerce AI System
+              </p>
             </div>
           </div>
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-bold text-slate-900 bg-indigo-100 px-3 py-1.5 rounded-sm shadow-sm">
+              Quản trị viên
+            </span>
+            <span className="text-slate-600">|</span>
+            <button
+              onClick={onLogout}
+              className="text-slate-300 hover:text-red-400 text-sm font-medium transition-colors"
+            >
+              Đăng xuất
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-[1200px] mx-auto px-4 py-6 flex-1 w-full flex flex-col">
+        {/* NAV TABS (Giao diện thẻ gạch chân tông màu Indigo) */}
+        <div className="bg-white rounded-sm shadow-sm border border-slate-200 flex overflow-x-auto mb-6">
           <button
-            onClick={onLogout}
-            className="bg-red-500 px-6 py-2 rounded-lg font-bold hover:bg-red-600"
+            onClick={() => setAdminTab("dashboard")}
+            className={`px-6 py-4 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${adminTab === "dashboard" ? "border-indigo-600 text-indigo-700 bg-indigo-50/30" : "border-transparent text-slate-500 hover:text-indigo-600 hover:bg-slate-50"}`}
           >
-            Đăng xuất
+            📡 Tổng quan AI
+          </button>
+          <button
+            onClick={() => setAdminTab("products")}
+            className={`px-6 py-4 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${adminTab === "products" ? "border-indigo-600 text-indigo-700 bg-indigo-50/30" : "border-transparent text-slate-500 hover:text-indigo-600 hover:bg-slate-50"}`}
+          >
+            📦 Quản lý Sản phẩm
+          </button>
+          <button
+            onClick={() => {
+              setAdminTab("orders");
+              fetchAdminOrders();
+            }}
+            className={`px-6 py-4 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${adminTab === "orders" ? "border-indigo-600 text-indigo-700 bg-indigo-50/30" : "border-transparent text-slate-500 hover:text-indigo-600 hover:bg-slate-50"}`}
+          >
+            🧾 Quản lý Đơn hàng
           </button>
         </div>
 
-        {/* Tab 1: Dashboard */}
+        {/* ================================================================= */}
+        {/* TAB 1: DASHBOARD                                                  */}
+        {/* ================================================================= */}
         {adminTab === "dashboard" && (
-          <div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 col-span-1">
-                <h3 className="text-gray-400 font-medium mb-4 text-center">
+          <div className="flex flex-col gap-6 animate-fade-in">
+            {/* Chart Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-sm border border-slate-200 shadow-sm col-span-1">
+                <h3 className="text-slate-700 font-black mb-6 text-xs uppercase tracking-wider">
                   Tỷ lệ Hành vi Khách hàng
                 </h3>
                 <div className="h-64">
@@ -239,7 +261,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                         cy="50%"
                         innerRadius={60}
                         outerRadius={80}
-                        paddingAngle={5}
+                        paddingAngle={2}
                         dataKey="value"
                       >
                         {getPieChartData().map((entry, index) => (
@@ -251,88 +273,136 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                       </Pie>
                       <RechartsTooltip
                         contentStyle={{
-                          backgroundColor: "#1f2937",
-                          borderColor: "#374151",
-                          color: "#fff",
+                          backgroundColor: "#fff",
+                          borderColor: "#e2e8f0",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          color: "#0f172a",
+                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                         }}
                       />
-                      <Legend verticalAlign="bottom" height={36} />
+                      <Legend
+                        verticalAlign="bottom"
+                        height={36}
+                        iconType="circle"
+                        wrapperStyle={{
+                          fontSize: "12px",
+                          color: "#475569",
+                          fontWeight: 500,
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
               </div>
-              <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 col-span-2">
-                <h3 className="text-gray-400 font-medium mb-4 text-center">
-                  Top 5 Sản phẩm được quan tâm nhất
+              <div className="bg-white p-6 rounded-sm border border-slate-200 shadow-sm col-span-2">
+                <h3 className="text-slate-700 font-black mb-6 text-xs uppercase tracking-wider">
+                  Top 5 Sản phẩm được quan tâm
                 </h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={getBarChartData()}>
-                      <XAxis dataKey="name" stroke="#9ca3af" />
-                      <YAxis stroke="#9ca3af" allowDecimals={false} />
-                      <RechartsTooltip
-                        contentStyle={{
-                          backgroundColor: "#1f2937",
-                          borderColor: "#374151",
-                          color: "#fff",
-                        }}
-                        cursor={{ fill: "#374151" }}
+                      <XAxis
+                        dataKey="name"
+                        stroke="#64748b"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        fontWeight={500}
                       />
-                      <Legend />
+                      <YAxis
+                        stroke="#64748b"
+                        fontSize={11}
+                        allowDecimals={false}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <RechartsTooltip
+                        cursor={{ fill: "#f8fafc" }}
+                        contentStyle={{
+                          backgroundColor: "#fff",
+                          borderColor: "#e2e8f0",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          color: "#0f172a",
+                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                        }}
+                      />
+                      <Legend
+                        iconType="circle"
+                        wrapperStyle={{
+                          fontSize: "12px",
+                          color: "#475569",
+                          fontWeight: 500,
+                        }}
+                      />
                       <Bar
                         dataKey="view"
                         name="Lượt Xem"
-                        fill="#3b82f6"
-                        radius={[4, 4, 0, 0]}
+                        fill="#6366f1"
+                        radius={[2, 2, 0, 0]}
                       />
                       <Bar
                         dataKey="cart"
                         name="Thêm Giỏ"
                         fill="#f59e0b"
-                        radius={[4, 4, 0, 0]}
+                        radius={[2, 2, 0, 0]}
                       />
                       <Bar
                         dataKey="purchase"
                         name="Lượt Mua"
                         fill="#10b981"
-                        radius={[4, 4, 0, 0]}
+                        radius={[2, 2, 0, 0]}
                       />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
             </div>
-            <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-              <div className="p-6 border-b border-gray-700">
-                <h2 className="text-xl font-bold">📡 Live Stream Data</h2>
+
+            {/* Live Data Table */}
+            <div className="bg-white rounded-sm border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                <h3 className="text-slate-700 font-black text-xs uppercase tracking-wider">
+                  📡 Luồng Dữ Liệu Real-time
+                </h3>
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+                </span>
               </div>
               <div className="overflow-x-auto max-h-[400px]">
-                <table className="w-full text-left text-sm text-gray-400">
-                  <thead className="bg-gray-700/50 text-gray-300 sticky top-0">
+                <table className="w-full text-left text-sm text-slate-600">
+                  <thead className="bg-white text-slate-400 sticky top-0 border-b border-slate-200 uppercase text-[10px] font-black tracking-wider z-10 shadow-sm">
                     <tr>
-                      <th className="px-6 py-4">Thời gian</th>
-                      <th className="px-6 py-4">User ID</th>
-                      <th className="px-6 py-4">Hành vi</th>
-                      <th className="px-6 py-4">Sản phẩm ID</th>
+                      <th className="px-6 py-3">Thời gian</th>
+                      <th className="px-6 py-3">Khách hàng</th>
+                      <th className="px-6 py-3">Hành vi</th>
+                      <th className="px-6 py-3">Sản phẩm</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className="divide-y divide-slate-100">
                     {adminActivities.map((act, index) => (
-                      <tr key={index} className="hover:bg-gray-700/30">
-                        <td className="px-6 py-4">
+                      <tr
+                        key={index}
+                        className="hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="px-6 py-3.5 whitespace-nowrap text-xs font-medium text-slate-500">
                           {new Date(act.timestamp).toLocaleString("vi-VN")}
                         </td>
-                        <td className="px-6 py-4 font-bold text-white">
-                          User {act.userId}
+                        <td className="px-6 py-3.5 font-bold text-slate-800">
+                          User #{act.userId}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-3.5">
                           <span
-                            className={`px-2 py-1 rounded text-xs font-bold ${act.action === "purchase" ? "bg-green-900/50 text-green-400" : "bg-blue-900/50 text-blue-400"}`}
+                            className={`px-2.5 py-1 rounded-sm text-[10px] font-black border uppercase tracking-wider ${act.action === "purchase" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : act.action === "add_to_cart" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-indigo-50 text-indigo-600 border-indigo-200"}`}
                           >
-                            {act.action.toUpperCase()}
+                            {act.action}
                           </span>
                         </td>
-                        <td className="px-6 py-4">Món đồ #{act.productId}</td>
+                        <td className="px-6 py-3.5 text-slate-700 font-medium">
+                          Món đồ #{act.productId}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -342,17 +412,20 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
           </div>
         )}
 
-        {/* Tab 2: Quản lý Sản phẩm */}
+        {/* ================================================================= */}
+        {/* TAB 2: PRODUCTS                                                   */}
+        {/* ================================================================= */}
         {adminTab === "products" && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-1 bg-gray-800 p-6 rounded-2xl border border-gray-700 h-fit">
-              <h2 className="text-xl font-bold mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+            {/* Form Thêm/Sửa */}
+            <div className="lg:col-span-1 bg-white p-6 rounded-sm border border-slate-200 shadow-sm h-fit">
+              <h3 className="text-slate-700 font-black mb-5 text-xs uppercase tracking-wider border-b border-slate-100 pb-3">
                 {editingId ? "✏️ Sửa Sản Phẩm" : "✨ Thêm Sản Phẩm"}
-              </h2>
+              </h3>
               <form onSubmit={handleSaveProduct} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Tên sản phẩm
+                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
+                    Tên sản phẩm *
                   </label>
                   <input
                     type="text"
@@ -361,12 +434,12 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                     onChange={(e) =>
                       setProductForm({ ...productForm, name: e.target.value })
                     }
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-green-500 outline-none"
+                    className="w-full bg-white border border-slate-300 rounded-sm px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Thương hiệu
+                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
+                    Thương hiệu *
                   </label>
                   <input
                     type="text"
@@ -375,12 +448,12 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                     onChange={(e) =>
                       setProductForm({ ...productForm, brand: e.target.value })
                     }
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-green-500 outline-none"
+                    className="w-full bg-white border border-slate-300 rounded-sm px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Giá bán (VNĐ)
+                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
+                    Giá bán (VNĐ) *
                   </label>
                   <input
                     type="number"
@@ -393,11 +466,11 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                         price: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-green-500 outline-none"
+                    className="w-full bg-white border border-slate-300 rounded-sm px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">
+                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
                     Link Ảnh (URL)
                   </label>
                   <input
@@ -409,14 +482,14 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                         imageUrl: e.target.value,
                       })
                     }
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-green-500 outline-none"
+                    className="w-full bg-white border border-slate-300 rounded-sm px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                     placeholder="https://..."
                   />
                 </div>
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-3">
                   <button
                     type="submit"
-                    className="flex-1 bg-green-600 font-bold py-2 rounded-lg hover:bg-green-700 text-white"
+                    className="flex-1 bg-indigo-600 text-sm font-bold py-2.5 rounded-sm hover:bg-indigo-700 text-white transition-colors shadow-sm shadow-indigo-200"
                   >
                     {editingId ? "Lưu thay đổi" : "Tạo mới"}
                   </button>
@@ -432,7 +505,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                           imageUrl: "",
                         });
                       }}
-                      className="px-4 bg-gray-700 font-bold rounded-lg hover:bg-gray-600"
+                      className="px-5 text-sm bg-slate-100 text-slate-600 font-bold rounded-sm hover:bg-slate-200 transition-colors"
                     >
                       Hủy
                     </button>
@@ -440,54 +513,69 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                 </div>
               </form>
             </div>
-            <div className="md:col-span-2 bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-              <div className="p-6 border-b border-gray-700">
-                <h2 className="text-xl font-bold">
-                  📦 Danh sách sản phẩm trong kho
-                </h2>
+
+            {/* Danh sách SP */}
+            <div className="lg:col-span-2 bg-white rounded-sm border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                <h3 className="text-slate-700 font-black text-xs uppercase tracking-wider">
+                  📦 Kho Hàng Hiện Tại
+                </h3>
+                <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-sm font-bold border border-indigo-100">
+                  Tổng: {adminProducts.length} SP
+                </span>
               </div>
-              <div className="overflow-x-auto max-h-[500px]">
-                <table className="w-full text-left text-sm text-gray-400">
-                  <thead className="bg-gray-700/50 text-gray-300 sticky top-0">
+              <div className="overflow-x-auto max-h-[600px]">
+                <table className="w-full text-left text-sm text-slate-600">
+                  <thead className="bg-white text-slate-400 sticky top-0 border-b border-slate-200 uppercase text-[10px] font-black tracking-wider z-10 shadow-sm">
                     <tr>
-                      <th className="px-4 py-3">Ảnh</th>
-                      <th className="px-4 py-3">Tên SP</th>
-                      <th className="px-4 py-3">Thương hiệu</th>
-                      <th className="px-4 py-3">Giá</th>
-                      <th className="px-4 py-3 text-right">Thao tác</th>
+                      <th className="px-5 py-3">Sản phẩm</th>
+                      <th className="px-5 py-3">Thương hiệu</th>
+                      <th className="px-5 py-3">Giá bán</th>
+                      <th className="px-5 py-3 text-right">Thao tác</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className="divide-y divide-slate-100">
                     {adminProducts.map((prod) => (
-                      <tr key={prod.id} className="hover:bg-gray-700/30">
-                        <td className="px-4 py-3">
-                          {prod.imageUrl ? (
-                            <img
-                              src={prod.imageUrl}
-                              alt="img"
-                              className="w-10 h-10 object-cover rounded"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 bg-gray-700 rounded"></div>
-                          )}
+                      <tr
+                        key={prod.id}
+                        className="hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white border border-slate-200 rounded-sm flex items-center justify-center p-0.5 shrink-0">
+                              {prod.imageUrl ? (
+                                <img
+                                  src={prod.imageUrl}
+                                  alt=""
+                                  className="max-h-full max-w-full object-contain"
+                                />
+                              ) : (
+                                <span className="text-[8px] text-slate-300">
+                                  No Img
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-bold text-slate-800 line-clamp-2 max-w-[200px] leading-snug">
+                              {prod.name}
+                            </span>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 font-bold text-white">
-                          {prod.name}
+                        <td className="px-5 py-3.5 text-xs font-medium text-slate-500">
+                          {prod.brand}
                         </td>
-                        <td className="px-4 py-3">{prod.brand}</td>
-                        <td className="px-4 py-3 text-green-400">
+                        <td className="px-5 py-3.5 font-bold text-red-500">
                           {prod.price.toLocaleString()} đ
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-5 py-3.5 text-right">
                           <button
                             onClick={() => handleEditClick(prod)}
-                            className="text-blue-400 hover:text-blue-300 mr-4 font-bold"
+                            className="text-indigo-600 hover:text-indigo-800 text-xs font-bold mr-4 transition-colors"
                           >
                             Sửa
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(prod.id)}
-                            className="text-red-400 hover:text-red-300 font-bold"
+                            className="text-slate-400 hover:text-red-500 text-xs font-bold transition-colors"
                           >
                             Xóa
                           </button>
@@ -501,51 +589,68 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
           </div>
         )}
 
-        {/* Tab 3: Quản lý Đơn hàng */}
+        {/* ================================================================= */}
+        {/* TAB 3: ORDERS                                                     */}
+        {/* ================================================================= */}
         {adminTab === "orders" && (
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-xl font-bold">🧾 Danh sách Đơn hàng</h2>
+          <div className="bg-white rounded-sm border border-slate-200 shadow-sm overflow-hidden animate-fade-in">
+            <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+              <h3 className="text-slate-700 font-black text-xs uppercase tracking-wider">
+                🧾 Quản Lý Đơn Hàng
+              </h3>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-gray-400">
-                <thead className="bg-gray-700/50 text-gray-300">
+            <div className="overflow-x-auto min-h-[400px]">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-white text-slate-400 sticky top-0 border-b border-slate-200 uppercase text-[10px] font-black tracking-wider z-10 shadow-sm">
                   <tr>
-                    <th className="px-6 py-4">Mã ĐH</th>
-                    <th className="px-6 py-4">User ID</th>
-                    <th className="px-6 py-4">Thời gian</th>
-                    <th className="px-6 py-4">Tổng tiền</th>
-                    <th className="px-6 py-4">Trạng thái</th>
-                    <th className="px-6 py-4 text-right">Hành động</th>
+                    <th className="px-6 py-3">Mã Đơn</th>
+                    <th className="px-6 py-3">Khách Hàng</th>
+                    <th className="px-6 py-3">Thời gian tạo</th>
+                    <th className="px-6 py-3">Tổng tiền</th>
+                    <th className="px-6 py-3">Trạng thái</th>
+                    <th className="px-6 py-3 text-right">Xử lý</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700">
+                <tbody className="divide-y divide-slate-100">
                   {adminOrders.map((order, idx) => (
-                    <tr key={idx} className="hover:bg-gray-700/30">
-                      <td className="px-6 py-4 font-bold text-white">
+                    <tr
+                      key={idx}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 font-bold text-slate-800">
                         #{order.id}
                       </td>
-                      <td className="px-6 py-4">Khách #{order.user?.id}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 text-xs font-medium text-slate-500">
+                        User #{order.user?.id}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-medium text-slate-500">
                         {new Date(order.orderDate).toLocaleString("vi-VN")}
                       </td>
-                      <td className="px-6 py-4 font-bold text-green-400">
+                      <td className="px-6 py-4 font-bold text-red-500">
                         {order.totalAmount.toLocaleString()} đ
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`px-2 py-1 rounded text-xs font-bold ${order.status === "CHỜ THANH TOÁN" ? "bg-red-900/50 text-red-400" : order.status === "ĐÃ THANH TOÁN" ? "bg-green-900/50 text-green-400" : order.status === "ĐANG GIAO" ? "bg-blue-900/50 text-blue-400" : "bg-gray-600 text-white"}`}
+                          className={`px-2.5 py-1 rounded-sm text-[10px] font-black border uppercase tracking-wider ${
+                            order.status === "CHỜ THANH TOÁN"
+                              ? "bg-rose-50 text-rose-600 border-rose-200"
+                              : order.status === "ĐÃ THANH TOÁN"
+                                ? "bg-amber-50 text-amber-600 border-amber-200"
+                                : order.status === "ĐANG GIAO"
+                                  ? "bg-indigo-50 text-indigo-600 border-indigo-200"
+                                  : "bg-emerald-50 text-emerald-600 border-emerald-200"
+                          }`}
                         >
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right space-x-2">
+                      <td className="px-6 py-4 text-right">
                         {order.status === "ĐÃ THANH TOÁN" && (
                           <button
                             onClick={() =>
                               updateOrderStatus(order.id, "ĐANG GIAO")
                             }
-                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            className="px-3 py-1.5 bg-indigo-50 border border-indigo-500 text-indigo-700 rounded-sm text-[11px] font-bold hover:bg-indigo-600 hover:text-white transition-colors shadow-sm"
                           >
                             Giao hàng
                           </button>
@@ -555,7 +660,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                             onClick={() =>
                               updateOrderStatus(order.id, "HOÀN THÀNH")
                             }
-                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                            className="px-3 py-1.5 bg-emerald-50 border border-emerald-500 text-emerald-700 rounded-sm text-[11px] font-bold hover:bg-emerald-600 hover:text-white transition-colors shadow-sm"
                           >
                             Hoàn thành
                           </button>
@@ -563,12 +668,22 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
                       </td>
                     </tr>
                   ))}
+                  {adminOrders.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="text-center py-10 text-slate-400 font-medium"
+                      >
+                        Không có đơn hàng nào cần xử lý.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };
