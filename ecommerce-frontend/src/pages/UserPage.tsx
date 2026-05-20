@@ -18,6 +18,7 @@ interface UserData {
   userId: number;
   role: string;
   token: string;
+  username?: string;
 }
 interface Review {
   id?: number;
@@ -28,12 +29,18 @@ interface Review {
   createdAt?: string;
 }
 
+// Cho phép userAuth có thể là null (Khách vãng lai)
 interface UserPageProps {
-  userAuth: UserData;
+  userAuth: UserData | null;
   onLogout: () => void;
+  onLoginClick: () => void;
 }
 
-const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
+const UserPage: React.FC<UserPageProps> = ({
+  userAuth,
+  onLogout,
+  onLoginClick,
+}) => {
   // STATE MUA SẮM CỦA USER
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [cartItems, setCartItems] = useState<Product[]>([]);
@@ -58,7 +65,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
     const vnp_ResponseCode = urlParams.get("vnp_ResponseCode");
     const vnp_TxnRef = urlParams.get("vnp_TxnRef");
 
-    if (vnp_ResponseCode && vnp_TxnRef) {
+    if (vnp_ResponseCode && vnp_TxnRef && userAuth) {
       const orderId = vnp_TxnRef.split("_")[0];
       fetch(
         `http://localhost:8888/api/orders/payment-confirm/${orderId}?responseCode=${vnp_ResponseCode}`,
@@ -82,14 +89,17 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
       });
       window.history.replaceState(null, "", window.location.pathname);
     }
-  }, []);
+  }, [userAuth]);
 
   // EFFECTS NẠP DỮ LIỆU
   useEffect(() => {
-    fetchRecommendations();
-    fetchCartHistory();
     fetchAllProducts();
-  }, []);
+    // Chỉ tải giỏ hàng và gợi ý nếu đã đăng nhập
+    if (userAuth) {
+      fetchRecommendations();
+      fetchCartHistory();
+    }
+  }, [userAuth]);
 
   useEffect(() => {
     if (selectedProduct) {
@@ -113,9 +123,10 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
 
   // CÁC HÀM XỬ LÝ API
   const fetchAllProducts = () => {
-    fetch("http://localhost:8888/api/products", {
-      headers: { Authorization: `Bearer ${userAuth.token}` },
-    })
+    const headers = userAuth
+      ? { Authorization: `Bearer ${userAuth.token}` }
+      : {};
+    fetch("http://localhost:8888/api/products", { headers })
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -131,6 +142,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
   };
 
   const fetchUserOrders = () => {
+    if (!userAuth) return;
     fetch(`http://localhost:8888/api/orders/user/${userAuth.userId}`, {
       headers: { Authorization: `Bearer ${userAuth.token}` },
     })
@@ -139,21 +151,27 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
   };
 
   const fetchRecommendations = () => {
+    if (!userAuth) return;
     fetch(`http://localhost:8888/api/recommendation/display/${userAuth.userId}`)
       .then((res) => res.json())
       .then((data) => setRecommendations(data));
   };
 
   const fetchCartHistory = () => {
+    if (!userAuth) return;
     fetch(`http://localhost:8888/api/activities/cart/${userAuth.userId}`)
       .then((res) => res.json())
       .then((data) => setCartItems(data));
   };
 
   const trackActivity = (productId: number, action: string) => {
+    if (!userAuth) return;
     fetch("http://localhost:8888/api/activities/track", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${userAuth.token}`,
+      },
       body: JSON.stringify({
         userId: userAuth.userId,
         action,
@@ -168,7 +186,28 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
     });
   };
 
+  // --- BẢO VỆ NÚT MUA HÀNG ---
+  const handleAddToCart = (product: Product) => {
+    if (!userAuth) {
+      toast("Vui lòng đăng nhập để mua hàng!", { icon: "🔒" });
+      onLoginClick();
+      return;
+    }
+    trackActivity(product.id, "add_to_cart");
+  };
+
+  const handlePurchaseNow = (product: Product) => {
+    if (!userAuth) {
+      toast("Vui lòng đăng nhập để mua hàng!", { icon: "🔒" });
+      onLoginClick();
+      return;
+    }
+    trackActivity(product.id, "purchase");
+    setSelectedProduct(null);
+  };
+
   const handleRemoveFromCart = (productId: number, itemIndex: number) => {
+    if (!userAuth) return;
     const newCart = [...cartItems];
     newCart.splice(itemIndex, 1);
     setCartItems(newCart);
@@ -184,6 +223,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
   };
 
   const handleCheckout = () => {
+    if (!userAuth) return onLoginClick();
     if (cartItems.length === 0) return toast.error("Giỏ hàng đang trống!");
 
     const loadingToast = toast.loading("Đang tạo đơn hàng...");
@@ -223,6 +263,8 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
 
   const submitReview = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userAuth) return onLoginClick();
+
     const body = {
       user: { id: userAuth.userId },
       product: { id: reviewForm.productId },
@@ -297,14 +339,22 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
       : 0;
 
   // ==========================================
-  // GIAO DIỆN (UI) TỐI GIẢN CHUẨN TIKI/SHOPEE
+  // HÀM XỬ LÝ ẢNH (CHẶN LỖI 500 TỪ TRÌNH DUYỆT)
   // ==========================================
+  const getValidImageUrl = (url?: string) => {
+    if (!url) return "https://placehold.co/400x400/eeeeee/999999?text=No+Image";
+    // Nếu không bắt đầu bằng http hoặc / thì trả về ảnh rỗng luôn
+    if (!url.startsWith("http") && !url.startsWith("/")) {
+      return "https://placehold.co/400x400/eeeeee/999999?text=No+Image";
+    }
+    return url;
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F5FA] font-sans text-gray-800 flex flex-col">
       {/* HEADER STICKY */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-[1200px] mx-auto px-4 py-3 flex justify-between items-center">
-          {/* Logo & Greeting */}
           <div
             className="flex items-center gap-3 cursor-pointer"
             onClick={() => window.scrollTo(0, 0)}
@@ -317,12 +367,13 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                 E-Commerce
               </h1>
               <p className="text-[11px] text-gray-500 mt-0.5">
-                Xin chào, Thành viên #{userAuth.userId}
+                {userAuth
+                  ? `Xin chào, ${userAuth.username || "Thành viên #" + userAuth.userId}`
+                  : "Chào mừng khách hàng"}
               </p>
             </div>
           </div>
 
-          {/* Thanh tìm kiếm */}
           <div className="flex-1 max-w-2xl mx-6">
             <div className="flex w-full border border-gray-300 rounded-sm overflow-hidden focus-within:border-blue-500 transition-colors">
               <input
@@ -338,47 +389,57 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
             </div>
           </div>
 
-          {/* Công cụ góc phải */}
           <div className="flex items-center gap-5">
-            <button
-              onClick={() => {
-                fetchUserOrders();
-                setShowOrders(true);
-              }}
-              className="text-gray-600 hover:text-blue-600 text-sm font-medium flex flex-col items-center"
-            >
-              <span className="text-xl leading-none">🧾</span>
-              <span className="text-[10px] mt-1">Đơn hàng</span>
-            </button>
+            {userAuth ? (
+              <>
+                <button
+                  onClick={() => {
+                    fetchUserOrders();
+                    setShowOrders(true);
+                  }}
+                  className="text-gray-600 hover:text-blue-600 text-sm font-medium flex flex-col items-center"
+                >
+                  <span className="text-xl leading-none">🧾</span>
+                  <span className="text-[10px] mt-1">Đơn hàng</span>
+                </button>
 
-            <button
-              onClick={() => setShowCart(true)}
-              className="relative text-gray-600 hover:text-blue-600 text-sm font-medium flex flex-col items-center"
-            >
-              <span className="text-xl leading-none">🛒</span>
-              <span className="text-[10px] mt-1">Giỏ hàng</span>
-              {cartItems.length > 0 && (
-                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white leading-none">
-                  {cartItems.length}
-                </span>
-              )}
-            </button>
+                <button
+                  onClick={() => setShowCart(true)}
+                  className="relative text-gray-600 hover:text-blue-600 text-sm font-medium flex flex-col items-center"
+                >
+                  <span className="text-xl leading-none">🛒</span>
+                  <span className="text-[10px] mt-1">Giỏ hàng</span>
+                  {cartItems.length > 0 && (
+                    <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white leading-none">
+                      {cartItems.length}
+                    </span>
+                  )}
+                </button>
 
-            <span className="text-gray-200 h-6 border-r border-gray-300"></span>
+                <span className="text-gray-200 h-6 border-r border-gray-300"></span>
 
-            <button
-              onClick={onLogout}
-              className="text-gray-500 hover:text-red-500 text-sm font-medium"
-            >
-              Đăng xuất
-            </button>
+                <button
+                  onClick={onLogout}
+                  className="text-gray-500 hover:text-red-500 text-sm font-medium"
+                >
+                  Đăng xuất
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onLoginClick}
+                className="bg-blue-600 text-white px-5 py-2 text-sm font-bold rounded-sm hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                Đăng nhập
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="max-w-[1200px] mx-auto px-4 py-6 flex-1 w-full flex flex-col gap-6">
         {/* KHU VỰC GỢI Ý AI */}
-        {recommendations.length > 0 && (
+        {userAuth && recommendations.length > 0 && (
           <section className="bg-white p-4 sm:p-6 rounded-sm shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <h2 className="text-lg font-bold text-gray-800 uppercase">
@@ -400,17 +461,11 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                   className="group bg-white border border-gray-200 rounded-sm hover:border-blue-500 hover:shadow-md cursor-pointer transition-all flex flex-col relative"
                 >
                   <div className="w-full aspect-square p-2 bg-white">
-                    {rec.product.imageUrl ? (
-                      <img
-                        src={rec.product.imageUrl}
-                        alt={rec.product.name}
-                        className="w-full h-full object-contain group-hover:-translate-y-1 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-50 flex items-center justify-center text-xs text-gray-400">
-                        No Image
-                      </div>
-                    )}
+                    <img
+                      src={getValidImageUrl(rec.product.imageUrl)}
+                      alt={rec.product.name}
+                      className="w-full h-full object-contain group-hover:-translate-y-1 transition-transform duration-300"
+                    />
                   </div>
 
                   <div className="p-2.5 flex flex-col flex-1 border-t border-gray-50">
@@ -419,7 +474,6 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                     </h3>
                     <RealProductRating productId={rec.product.id} />
 
-                    {/* Thanh AI siêu mỏng tinh tế */}
                     <div className="mt-1 mb-2">
                       <div className="flex justify-between text-[10px] text-gray-400 mb-1">
                         <span>Độ phù hợp AI</span>
@@ -449,7 +503,6 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
 
         {/* KHU VỰC TẤT CẢ SẢN PHẨM */}
         <section>
-          {/* Bộ lọc thanh lịch */}
           <div className="flex flex-col sm:flex-row justify-between items-center mb-4 bg-white p-4 rounded-sm shadow-sm gap-4">
             <div className="flex gap-2 w-full sm:w-auto overflow-x-auto scrollbar-hide">
               {[
@@ -484,7 +537,6 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
             </select>
           </div>
 
-          {/* Lưới sản phẩm */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {filteredProducts.length === 0 ? (
               <div className="col-span-full bg-white py-16 text-center text-gray-500 rounded-sm">
@@ -501,17 +553,11 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                   className="group bg-white border border-gray-200 rounded-sm hover:border-blue-500 hover:shadow-md cursor-pointer transition-all flex flex-col"
                 >
                   <div className="w-full aspect-square p-2 bg-white border-b border-gray-50">
-                    {prod.imageUrl ? (
-                      <img
-                        src={prod.imageUrl}
-                        alt={prod.name}
-                        className="w-full h-full object-contain group-hover:-translate-y-1 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-50 flex items-center justify-center text-xs text-gray-400">
-                        No Image
-                      </div>
-                    )}
+                    <img
+                      src={getValidImageUrl(prod.imageUrl)}
+                      alt={prod.name}
+                      className="w-full h-full object-contain group-hover:-translate-y-1 transition-transform duration-300"
+                    />
                   </div>
                   <div className="p-2.5 flex flex-col flex-1">
                     <h3 className="text-sm text-gray-800 line-clamp-2 leading-snug min-h-[40px] mb-1">
@@ -522,12 +568,11 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                       {prod.price.toLocaleString()} ₫
                     </div>
                   </div>
-                  {/* Nút thêm vào giỏ ôm sát đáy */}
                   <div className="px-2.5 pb-2.5">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        trackActivity(prod.id, "add_to_cart");
+                        handleAddToCart(prod);
                       }}
                       className="w-full py-1.5 border border-blue-600 text-blue-600 text-xs font-medium rounded-sm hover:bg-blue-600 hover:text-white transition-colors"
                     >
@@ -541,26 +586,23 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
         </section>
       </main>
 
-      {/* FOOTER */}
-      <footer className="bg-white border-t border-gray-200 mt-10 py-8">
-        <div className="max-w-[1200px] mx-auto px-4 text-center">
-          <h2 className="text-base font-bold text-gray-700 mb-2">
-            Hệ thống Cửa hàng AI - Next Purchase Prediction
-          </h2>
-          <p className="text-sm text-gray-500 mb-1">
-            Đồ án tốt nghiệp / Khóa luận chuyên ngành Phần mềm
+      {/* FOOTER SIÊU TỐI GIẢN */}
+      <footer className="bg-white border-t border-gray-200 mt-12 py-8">
+        <div className="max-w-[1200px] mx-auto px-4 text-center space-y-2">
+          <p className="text-base font-bold text-gray-800">
+            Học viện Công nghệ Bưu chính Viễn thông
           </p>
-          <div className="flex justify-center items-center gap-4 text-xs text-gray-400 mt-4">
-            <span>Sinh viên: Đặng Thanh Tùng</span>
-            <span>|</span>
-            <span>Nhóm: VH07</span>
+          <p className="text-sm font-medium text-gray-600">
+            Môn học: Phân tích thiết kế hệ thống thông minh
+          </p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+            Thực hiện: Nhóm 1
+          </p>
+          <div className="text-[11px] text-gray-400 border-t border-gray-100 pt-4 mt-2">
+            © 2026 E-Commerce AI System Project.
           </div>
         </div>
       </footer>
-
-      {/* ======================================================= */}
-      {/* POPUPS CẬP NHẬT GIAO DIỆN VUÔNG VỨC */}
-      {/* ======================================================= */}
 
       {/* 1. POPUP SẢN PHẨM */}
       {selectedProduct && (
@@ -579,20 +621,14 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
               ✕
             </button>
 
-            {/* Ảnh bên trái */}
             <div className="md:w-1/2 p-6 flex items-center justify-center border-r border-gray-100">
-              {selectedProduct.imageUrl ? (
-                <img
-                  src={selectedProduct.imageUrl}
-                  alt={selectedProduct.name}
-                  className="max-h-96 object-contain"
-                />
-              ) : (
-                <span className="text-gray-300">Chưa có ảnh</span>
-              )}
+              <img
+                src={getValidImageUrl(selectedProduct.imageUrl)}
+                alt={selectedProduct.name}
+                className="max-h-96 object-contain"
+              />
             </div>
 
-            {/* Thông tin bên phải */}
             <div className="md:w-1/2 p-6 md:p-8 flex flex-col bg-gray-50/50">
               <span className="text-blue-600 text-xs font-bold uppercase mb-2 tracking-wider">
                 {selectedProduct.brand}
@@ -629,7 +665,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    trackActivity(selectedProduct.id, "add_to_cart");
+                    handleAddToCart(selectedProduct);
                     setSelectedProduct(null);
                   }}
                   className="flex-1 bg-red-50 border border-red-500 text-red-600 font-medium py-3 rounded-sm hover:bg-red-100 transition-colors"
@@ -639,8 +675,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    trackActivity(selectedProduct.id, "purchase");
-                    setSelectedProduct(null);
+                    handlePurchaseNow(selectedProduct);
                   }}
                   className="flex-1 bg-red-500 text-white font-medium py-3 rounded-sm hover:bg-red-600 transition-colors shadow-sm"
                 >
@@ -648,8 +683,6 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                 </button>
               </div>
             </div>
-
-            {/* Nếu cần hiển thị danh sách Review thì có thể đẩy xuống dưới dạng 1 khối mỏng ở đây (đã rút gọn để focus vào chốt sale) */}
           </div>
         </div>
       )}
@@ -686,7 +719,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                     className="flex gap-3 bg-white p-3 rounded-sm border border-gray-200 relative group hover:border-blue-300"
                   >
                     <img
-                      src={item.imageUrl || ""}
+                      src={getValidImageUrl(item.imageUrl)}
                       alt=""
                       className="w-16 h-16 object-contain border border-gray-100 p-1"
                     />
@@ -766,7 +799,6 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                     key={idx}
                     className="bg-white border border-gray-200 rounded-sm"
                   >
-                    {/* Header Đơn */}
                     <div className="flex justify-between items-center p-3 border-b border-gray-100 bg-gray-50/50">
                       <div>
                         <span className="text-sm font-medium text-gray-800 mr-3">
@@ -785,7 +817,6 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                       </span>
                     </div>
 
-                    {/* Danh sách SP trong Đơn */}
                     <div className="p-3">
                       {entry.items.map((item: any, i: number) => (
                         <div
@@ -795,7 +826,7 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                           <div className="flex items-center gap-3">
                             <div className="w-12 h-12 border border-gray-100 flex items-center justify-center">
                               <img
-                                src={item.product?.imageUrl}
+                                src={getValidImageUrl(item.product?.imageUrl)}
                                 className="max-h-full max-w-full object-contain p-1"
                                 alt=""
                               />
@@ -831,7 +862,6 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                       ))}
                     </div>
 
-                    {/* Tổng tiền Đơn */}
                     <div className="p-3 border-t border-gray-100 text-right bg-gray-50/50">
                       <span className="text-sm text-gray-600 mr-2">
                         Tổng số tiền:
@@ -841,7 +871,6 @@ const UserPage: React.FC<UserPageProps> = ({ userAuth, onLogout }) => {
                       </span>
                     </div>
 
-                    {/* Khung Đánh Giá Inline */}
                     {reviewForm.productId &&
                       entry.items.some(
                         (it: any) => it.product?.id === reviewForm.productId,
