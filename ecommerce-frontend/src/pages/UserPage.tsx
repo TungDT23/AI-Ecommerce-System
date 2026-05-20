@@ -31,6 +31,7 @@ interface Review {
 interface UserProfile {
   id: number;
   username: string;
+  fullName: string;
   email: string;
   age: number;
   gender: string;
@@ -69,6 +70,7 @@ const UserPage: React.FC<UserPageProps> = ({
   // STATE THÔNG TIN CÁ NHÂN (PROFILE MODULE)
   const [showProfile, setShowProfile] = useState<boolean>(false);
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false); // Trạng thái khóa/mở khóa form
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
 
   // BẮT SỰ KIỆN VNPAY
@@ -109,7 +111,7 @@ const UserPage: React.FC<UserPageProps> = ({
     if (userAuth) {
       fetchRecommendations();
       fetchCartHistory();
-      fetchUserProfile(); // Lấy thông tin cá nhân khi đăng nhập
+      fetchUserProfile(); // Tải thông tin cá nhân ngay khi đăng nhập thành công
     }
   }, [userAuth]);
 
@@ -155,12 +157,13 @@ const UserPage: React.FC<UserPageProps> = ({
 
   const fetchUserProfile = () => {
     if (!userAuth) return;
-    // Đồng bộ luồng gọi thông tin cá nhân từ User ID
     fetch(`http://localhost:8888/api/users/${userAuth.userId}`, {
       headers: { Authorization: `Bearer ${userAuth.token}` },
     })
       .then((res) => res.json())
-      .then((data) => setProfileData(data))
+      .then((data) => {
+        setProfileData(data);
+      })
       .catch((err) => console.error("Lỗi tải thông tin cá nhân:", err));
   };
 
@@ -180,8 +183,8 @@ const UserPage: React.FC<UserPageProps> = ({
       .then((res) => {
         if (res.ok) {
           toast.success("Cập nhật thông tin cá nhân thành công!");
-          setShowProfile(false);
-          fetchUserProfile();
+          setIsEditing(false); // Khóa form lại sau khi lưu
+          fetchUserProfile(); // Reload lại data mới nhất từ DB
         } else {
           toast.error("Có lỗi xảy ra khi cập nhật thông tin!");
         }
@@ -409,10 +412,9 @@ const UserPage: React.FC<UserPageProps> = ({
               <h1 className="text-xl font-bold text-blue-600 leading-none">
                 E-Commerce
               </h1>
-              {/* FIX VẤN ĐỀ 1: SỬ DỤNG USERNAME THAY VÌ HIỂN THỊ ID THÔ SƠ */}
               <p className="text-[11px] text-gray-500 mt-0.5 font-semibold">
                 {userAuth
-                  ? `Xin chào, ${userAuth.username || profileData?.username || "Thành viên"}`
+                  ? `Xin chào, ${profileData?.fullName || userAuth.username || "Thành viên"}`
                   : "Chào mừng khách hàng"}
               </p>
             </div>
@@ -436,10 +438,10 @@ const UserPage: React.FC<UserPageProps> = ({
           <div className="flex items-center gap-5">
             {userAuth ? (
               <>
-                {/* FIX VẤN ĐỀ 2: THÊM NÚT TRUY CẬP MODULE THÔNG TIN CÁ NHÂN */}
                 <button
                   onClick={() => {
                     fetchUserProfile();
+                    setIsEditing(false); // Reset về trạng thái chỉ xem khi mở popup
                     setShowProfile(true);
                   }}
                   className="text-gray-600 hover:text-blue-600 text-sm font-medium flex flex-col items-center"
@@ -661,7 +663,7 @@ const UserPage: React.FC<UserPageProps> = ({
       </footer>
 
       {/* ======================================================= */}
-      {/* 🚀 FIXED VẤN ĐỀ 2: POPUP QUẢN LÝ THÔNG TIN CÁ NHÂN (PROFILE) */}
+      {/* 🚀 ĐÃ HOÀN THIỆN: POPUP HỒ SƠ CÁ NHÂN CHUẨN SHOPEE */}
       {/* ======================================================= */}
       {showProfile && profileData && (
         <div
@@ -685,6 +687,29 @@ const UserPage: React.FC<UserPageProps> = ({
             </div>
 
             <form onSubmit={handleUpdateProfile} className="p-6 space-y-4">
+              {/* 1. Ô Họ và tên: Khóa/Mở dựa theo state isEditing */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                  Họ và tên *
+                </label>
+                <input
+                  type="text"
+                  required
+                  disabled={!isEditing}
+                  value={profileData.fullName || ""}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, fullName: e.target.value })
+                  }
+                  className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
+                    isEditing
+                      ? "bg-white border-blue-500 text-gray-800"
+                      : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed"
+                  }`}
+                  placeholder="Chưa cập nhật họ tên"
+                />
+              </div>
+
+              {/* 2. Ô Tên tài khoản: Luôn khóa 100% */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
                   Tên tài khoản
@@ -692,14 +717,12 @@ const UserPage: React.FC<UserPageProps> = ({
                 <input
                   type="text"
                   disabled
-                  value={profileData.username}
-                  className="w-full bg-gray-100 border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-500 outline-none cursor-not-allowed"
+                  value={profileData.username || ""}
+                  className="w-full bg-gray-100 border border-gray-200 rounded-sm px-3 py-2 text-sm text-gray-400 outline-none cursor-not-allowed"
                 />
-                <span className="text-[10px] text-gray-400 mt-0.5 block">
-                  Tên tài khoản hệ thống không thể thay đổi
-                </span>
               </div>
 
+              {/* 3. Ô Địa chỉ Email */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
                   Địa chỉ Email *
@@ -707,14 +730,20 @@ const UserPage: React.FC<UserPageProps> = ({
                 <input
                   type="email"
                   required
-                  value={profileData.email}
+                  disabled={!isEditing}
+                  value={profileData.email || ""}
                   onChange={(e) =>
                     setProfileData({ ...profileData, email: e.target.value })
                   }
-                  className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                  className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
+                    isEditing
+                      ? "bg-white border-blue-500 text-gray-800"
+                      : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed"
+                  }`}
                 />
               </div>
 
+              {/* 4. Nhóm Tuổi & Giới tính */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
@@ -725,6 +754,7 @@ const UserPage: React.FC<UserPageProps> = ({
                     required
                     min="1"
                     max="120"
+                    disabled={!isEditing}
                     value={profileData.age || ""}
                     onChange={(e) =>
                       setProfileData({
@@ -732,7 +762,11 @@ const UserPage: React.FC<UserPageProps> = ({
                         age: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                    className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
+                      isEditing
+                        ? "bg-white border-blue-500 text-gray-800"
+                        : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed"
+                    }`}
                   />
                 </div>
                 <div>
@@ -740,11 +774,16 @@ const UserPage: React.FC<UserPageProps> = ({
                     Giới tính
                   </label>
                   <select
+                    disabled={!isEditing}
                     value={profileData.gender || "Nam"}
                     onChange={(e) =>
                       setProfileData({ ...profileData, gender: e.target.value })
                     }
-                    className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                    className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
+                      isEditing
+                        ? "bg-white border-blue-500 text-gray-800 bg-white"
+                        : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed bg-gray-50"
+                    }`}
                   >
                     <option value="Nam">Nam</option>
                     <option value="Nữ">Nữ</option>
@@ -753,6 +792,7 @@ const UserPage: React.FC<UserPageProps> = ({
                 </div>
               </div>
 
+              {/* 5. Ô Địa chỉ nơi ở */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
                   Địa chỉ nơi ở *
@@ -760,29 +800,52 @@ const UserPage: React.FC<UserPageProps> = ({
                 <input
                   type="text"
                   required
-                  value={profileData.location}
+                  disabled={!isEditing}
+                  value={profileData.location || ""}
                   onChange={(e) =>
                     setProfileData({ ...profileData, location: e.target.value })
                   }
-                  className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                  className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
+                    isEditing
+                      ? "bg-white border-blue-500 text-gray-800"
+                      : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed"
+                  }`}
                 />
               </div>
 
+              {/* THANH ĐIỀU KHIỂN NÚT BẤM BẢO VỆ DỮ LIỆU */}
               <div className="flex gap-2 pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setShowProfile(false)}
-                  className="flex-1 py-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-sm hover:bg-gray-200 transition-colors"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingProfile}
-                  className="flex-1 py-2 text-sm font-bold text-white bg-blue-600 rounded-sm hover:bg-blue-700 transition-colors disabled:bg-blue-400 shadow-sm"
-                >
-                  {isSavingProfile ? "Đang lưu..." : "Cập nhật"}
-                </button>
+                {!isEditing ? (
+                  // Chế độ CHỈ XEM: Hiện nút mở khóa sửa thông tin
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="w-full py-2 text-sm font-bold text-white bg-blue-600 rounded-sm hover:bg-blue-700 transition-colors shadow-sm text-center"
+                  >
+                    ✏️ Chỉnh sửa hồ sơ
+                  </button>
+                ) : (
+                  // Chế độ SỬA: Hiện cặp nút Hủy / Cập nhật
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(false);
+                        fetchUserProfile(); // Quay xe, hoàn tác lại data cũ từ DB
+                      }}
+                      className="flex-1 py-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-sm hover:bg-gray-200 transition-colors"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSavingProfile}
+                      className="flex-1 py-2 text-sm font-bold text-white bg-green-600 rounded-sm hover:bg-green-700 transition-colors disabled:bg-green-400 shadow-sm"
+                    >
+                      {isSavingProfile ? "Đang lưu..." : "💾 Cập nhật"}
+                    </button>
+                  </>
+                )}
               </div>
             </form>
           </div>

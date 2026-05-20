@@ -23,7 +23,7 @@ public class AuthController {
     private JwtUtil jwtUtil;
 
     // ========================================================
-    // 1. API ĐĂNG NHẬP (Giữ nguyên logic của sếp)
+    // 1. API ĐĂNG NHẬP (ĐÃ SỬA LỖI TRUYỀN THIẾU THAM SỐ)
     // ========================================================
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
@@ -38,8 +38,8 @@ public class AuthController {
                 // 3. In vé VIP (JWT Token)
                 String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
                 
-                // 4. Trả về cho React
-                return ResponseEntity.ok(new AuthResponse(token, user.getId(), user.getRole()));
+                // 4. FIX LỖI 500: Truyền thêm tham số thứ 4 "user.getFullName()" để khớp với DTO AuthResponse mới
+                return ResponseEntity.ok(new AuthResponse(token, user.getId(), user.getRole(), user.getFullName()));
             }
         }
         // Nếu sai tài khoản hoặc mật khẩu
@@ -47,7 +47,7 @@ public class AuthController {
     }
 
     // ========================================================
-    // 2. API ĐĂNG KÝ MỚI
+    // 2. API ĐĂNG KÝ MỚI (CẬP NHẬT ĐỂ ĐỒNG BỘ FULL_NAME)
     // ========================================================
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
@@ -65,6 +65,9 @@ public class AuthController {
         User newUser = new User();
         newUser.setUsername(request.getUsername());
         newUser.setEmail(request.getEmail());
+        
+        // Gán luôn Họ tên mặc định bằng chính Username khi mới đăng ký để không bị trống DB
+        newUser.setFullName(request.getUsername());
         
         // Lưu mật khẩu dạng thô (plain-text) để khớp với hàm Login ở trên
         newUser.setPassword(request.getPassword()); 
