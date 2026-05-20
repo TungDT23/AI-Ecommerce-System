@@ -60,4 +60,28 @@ public class UserController {
         
         return ResponseEntity.ok(updatedUser);
     }
+
+    // 4. API MỚI: Thay đổi mật khẩu cho tài khoản
+    @PutMapping("/{id}/change-password")
+    public ResponseEntity<?> changePassword(@PathVariable int id, @RequestBody java.util.Map<String, String> passwords) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
+            return ResponseEntity.status(404).body("Không tìm thấy người dùng!");
+        }
+
+        User user = userOpt.get();
+        String oldPassword = passwords.get("oldPassword");
+        String newPassword = passwords.get("newPassword");
+
+        // Kiểm tra mật khẩu cũ gửi lên xem có khớp trong DB không
+        if (!user.getPassword().equals(oldPassword)) {
+            return ResponseEntity.badRequest().body("Mật khẩu cũ không chính xác!");
+        }
+
+        // Cập nhật mật khẩu mới (chữ thô vì cấu hình NoOpPasswordEncoder)
+        user.setPassword(newPassword);
+        userRepository.save(user);
+
+        return ResponseEntity.ok("Đổi mật khẩu thành công!");
+    }
 }

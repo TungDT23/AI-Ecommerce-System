@@ -67,11 +67,21 @@ const UserPage: React.FC<UserPageProps> = ({
     productId: number | null;
   }>({ rating: 5, comment: "", productId: null });
 
-  // STATE THÔNG TIN CÁ NHÂN (PROFILE MODULE)
+  // STATE PROFILE & DROPDOWN MENU
   const [showProfile, setShowProfile] = useState<boolean>(false);
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
-  const [isEditing, setIsEditing] = useState<boolean>(false); // Trạng thái khóa/mở khóa form
+  const [isEditing, SecretIsEditing] = useState<boolean>(false);
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
+  const [showDropdown, setShowDropdown] = useState<boolean>(false);
+
+  // STATE ĐỔI MẬT KHẨU
+  const [showChangePassword, setShowChangePassword] = useState<boolean>(false);
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [isSavingPassword, setIsSavingPassword] = useState<boolean>(false);
 
   // BẮT SỰ KIỆN VNPAY
   useEffect(() => {
@@ -111,7 +121,7 @@ const UserPage: React.FC<UserPageProps> = ({
     if (userAuth) {
       fetchRecommendations();
       fetchCartHistory();
-      fetchUserProfile(); // Tải thông tin cá nhân ngay khi đăng nhập thành công
+      fetchUserProfile();
     }
   }, [userAuth]);
 
@@ -161,9 +171,7 @@ const UserPage: React.FC<UserPageProps> = ({
       headers: { Authorization: `Bearer ${userAuth.token}` },
     })
       .then((res) => res.json())
-      .then((data) => {
-        setProfileData(data);
-      })
+      .then((data) => setProfileData(data))
       .catch((err) => console.error("Lỗi tải thông tin cá nhân:", err));
   };
 
@@ -183,14 +191,80 @@ const UserPage: React.FC<UserPageProps> = ({
       .then((res) => {
         if (res.ok) {
           toast.success("Cập nhật thông tin cá nhân thành công!");
-          setIsEditing(false); // Khóa form lại sau khi lưu
-          fetchUserProfile(); // Reload lại data mới nhất từ DB
+          SecretIsEditing(false);
+          fetchUserProfile();
         } else {
           toast.error("Có lỗi xảy ra khi cập nhật thông tin!");
         }
       })
       .catch(() => toast.error("Lỗi kết nối server Backend!"))
       .finally(() => setIsSavingProfile(false));
+  };
+
+  // ========================================================
+  // 🔒 LOGIC ĐỔI MẬT KHẨU KHÔNG BỊ HIỆN DIALOG ĐĂNG XUẤT PHỤ
+  // ========================================================
+  const handleChangePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userAuth) return;
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error("Mật khẩu mới và xác nhận mật khẩu không trùng khớp!");
+      return;
+    }
+
+    setIsSavingPassword(true);
+    fetch(
+      `http://localhost:8888/api/users/${userAuth.userId}/change-password`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userAuth.token}`,
+        },
+        body: JSON.stringify({
+          oldPassword: passwordForm.oldPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      },
+    )
+      .then(async (res) => {
+        if (res.ok) {
+          // 1. Tắt toàn bộ các popup liên quan đến tài khoản
+          setShowChangePassword(false);
+          setShowProfile(false);
+          setShowDropdown(false);
+
+          // 2. Reset nhanh form dữ liệu
+          setPasswordForm({
+            oldPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+          });
+
+          // 3. Hiển thị thông báo Toast chuẩn chỉnh kéo dài 3.5 giây
+          toast.success(
+            "Đổi mật khẩu thành công, mời bạn đăng nhập lại để tiếp tục sử dụng!",
+            {
+              duration: 3500,
+              icon: "🔑",
+            },
+          );
+
+          // 4. CHỐT HẠ: Tự làm sạch dữ liệu đăng nhập và nhảy ra trang chủ (Không gọi onLogout để tránh trôi modal cũ)
+          localStorage.removeItem("userAuth"); // Xóa session token lưu ở trình duyệt của sếp
+
+          // Tự reload nhẹ hoặc kích hoạt reset state phiên làm việc tùy theo cấu hình App
+          setTimeout(() => {
+            window.location.href = "/"; // Đẩy thẳng trình duyệt về trang chủ sạch sẽ
+          }, 3500); // Chờ hộp thoại ở trên biến mất trong 3.5 giây rồi chuyển trang luôn!
+        } else {
+          const errMsg = await res.text();
+          toast.error(errMsg || "Mật khẩu cũ không chính xác!");
+        }
+      })
+      .catch(() => toast.error("Lỗi kết nối máy chủ Backend!"))
+      .finally(() => setIsSavingPassword(false));
   };
 
   const fetchUserOrders = () => {
@@ -438,18 +512,7 @@ const UserPage: React.FC<UserPageProps> = ({
           <div className="flex items-center gap-5">
             {userAuth ? (
               <>
-                <button
-                  onClick={() => {
-                    fetchUserProfile();
-                    setIsEditing(false); // Reset về trạng thái chỉ xem khi mở popup
-                    setShowProfile(true);
-                  }}
-                  className="text-gray-600 hover:text-blue-600 text-sm font-medium flex flex-col items-center"
-                >
-                  <span className="text-xl leading-none">👤</span>
-                  <span className="text-[10px] mt-1">Tài khoản</span>
-                </button>
-
+                {/* 1. ĐƠN HÀNG */}
                 <button
                   onClick={() => {
                     fetchUserOrders();
@@ -461,6 +524,7 @@ const UserPage: React.FC<UserPageProps> = ({
                   <span className="text-[10px] mt-1">Đơn hàng</span>
                 </button>
 
+                {/* 2. GIỎ HÀNG */}
                 <button
                   onClick={() => setShowCart(true)}
                   className="relative text-gray-600 hover:text-blue-600 text-sm font-medium flex flex-col items-center"
@@ -468,7 +532,7 @@ const UserPage: React.FC<UserPageProps> = ({
                   <span className="text-xl leading-none">🛒</span>
                   <span className="text-[10px] mt-1">Giỏ hàng</span>
                   {cartItems.length > 0 && (
-                    <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white leading-none">
+                    <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white leisure-none">
                       {cartItems.length}
                     </span>
                   )}
@@ -476,12 +540,57 @@ const UserPage: React.FC<UserPageProps> = ({
 
                 <span className="text-gray-200 h-6 border-r border-gray-300"></span>
 
-                <button
-                  onClick={onLogout}
-                  className="text-gray-500 hover:text-red-500 text-sm font-medium"
+                {/* 3. TÀI KHOẢN DROP-DOWN */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => setShowDropdown(true)}
+                  onMouseLeave={() => setShowDropdown(false)}
                 >
-                  Đăng xuất
-                </button>
+                  <button
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="text-gray-600 hover:text-blue-600 text-sm font-medium flex flex-col items-center focus:outline-none"
+                  >
+                    <span className="text-xl leading-none">👤</span>
+                    <span className="text-[10px] mt-1 flex items-center gap-0.5">
+                      Tài khoản <span className="text-[8px]">▼</span>
+                    </span>
+                  </button>
+
+                  {showDropdown && (
+                    <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-sm shadow-xl py-1 z-50 animate-fade-in">
+                      <button
+                        onClick={() => {
+                          fetchUserProfile();
+                          SecretIsEditing(false);
+                          setShowProfile(true);
+                          setShowDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium transition-colors"
+                      >
+                        👤 Thông tin cá nhân
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowChangePassword(true);
+                          setShowDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium transition-colors"
+                      >
+                        🔒 Đổi mật khẩu
+                      </button>
+                      <div className="border-t border-gray-100 my-1"></div>
+                      <button
+                        onClick={() => {
+                          setShowDropdown(false);
+                          onLogout();
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 font-bold transition-colors"
+                      >
+                        🚪 Đăng xuất
+                      </button>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <button
@@ -531,7 +640,6 @@ const UserPage: React.FC<UserPageProps> = ({
                       {rec.product.name}
                     </h3>
                     <RealProductRating productId={rec.product.id} />
-
                     <div className="mt-1 mb-2">
                       <div className="flex justify-between text-[10px] text-gray-400 mb-1">
                         <span>Độ phù hợp AI</span>
@@ -548,9 +656,8 @@ const UserPage: React.FC<UserPageProps> = ({
                         ></div>
                       </div>
                     </div>
-
                     <div className="mt-auto pt-2 text-red-500 font-medium text-base">
-                      {rec.product.price.toLocaleString()} ₫
+                      {(rec.product.price || 0).toLocaleString()} ₫
                     </div>
                   </div>
                 </div>
@@ -572,17 +679,12 @@ const UserPage: React.FC<UserPageProps> = ({
                 <button
                   key={cat.id}
                   onClick={() => setCategoryFilter(cat.id)}
-                  className={`px-5 py-1.5 text-sm rounded-sm border whitespace-nowrap transition-colors ${
-                    categoryFilter === cat.id
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
-                  }`}
+                  className={`px-5 py-1.5 text-sm rounded-sm border whitespace-nowrap transition-colors ${categoryFilter === cat.id ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"}`}
                 >
                   {cat.label}
                 </button>
               ))}
             </div>
-
             <select
               value={priceFilter}
               onChange={(e) => setPriceFilter(e.target.value)}
@@ -623,7 +725,7 @@ const UserPage: React.FC<UserPageProps> = ({
                     </h3>
                     <RealProductRating productId={prod.id} />
                     <div className="mt-auto pt-2 text-red-500 font-medium text-base mb-2">
-                      {prod.price.toLocaleString()} ₫
+                      {(prod.price || 0).toLocaleString()} ₫
                     </div>
                   </div>
                   <div className="px-2.5 pb-2.5">
@@ -644,34 +746,14 @@ const UserPage: React.FC<UserPageProps> = ({
         </section>
       </main>
 
-      {/* FOOTER SIÊU TỐI GIẢN */}
-      <footer className="bg-white border-t border-gray-200 mt-12 py-8">
-        <div className="max-w-[1200px] mx-auto px-4 text-center space-y-2">
-          <p className="text-base font-bold text-gray-800">
-            Học viện Công nghệ Bưu chính Viễn thông
-          </p>
-          <p className="text-sm font-medium text-gray-600">
-            Môn học: Phân tích thiết kế hệ thống thông minh
-          </p>
-          <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
-            Thực hiện: Nhóm 1
-          </p>
-          <div className="text-[11px] text-gray-400 border-t border-gray-100 pt-4 mt-2">
-            © 2026 E-Commerce AI System Project.
-          </div>
-        </div>
-      </footer>
-
-      {/* ======================================================= */}
-      {/* 🚀 ĐÃ HOÀN THIỆN: POPUP HỒ SƠ CÁ NHÂN CHUẨN SHOPEE */}
-      {/* ======================================================= */}
+      {/* 👤 POPUP 1: HỒ SƠ CÁ NHÂN */}
       {showProfile && profileData && (
         <div
           className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
           onClick={() => setShowProfile(false)}
         >
           <div
-            className="bg-white rounded-sm max-w-md w-full relative shadow-2xl flex flex-col overflow-hidden animate-fade-in"
+            className="bg-white rounded-sm max-w-md w-full relative shadow-2xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
@@ -685,9 +767,7 @@ const UserPage: React.FC<UserPageProps> = ({
                 ✕
               </button>
             </div>
-
             <form onSubmit={handleUpdateProfile} className="p-6 space-y-4">
-              {/* 1. Ô Họ và tên: Khóa/Mở dựa theo state isEditing */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
                   Họ và tên *
@@ -700,16 +780,9 @@ const UserPage: React.FC<UserPageProps> = ({
                   onChange={(e) =>
                     setProfileData({ ...profileData, fullName: e.target.value })
                   }
-                  className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
-                    isEditing
-                      ? "bg-white border-blue-500 text-gray-800"
-                      : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed"
-                  }`}
-                  placeholder="Chưa cập nhật họ tên"
+                  className={`w-full border rounded-sm px-3 py-2 text-sm outline-none ${isEditing ? "border-blue-500 bg-white" : "border-gray-200 bg-gray-50 text-gray-500"}`}
                 />
               </div>
-
-              {/* 2. Ô Tên tài khoản: Luôn khóa 100% */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
                   Tên tài khoản
@@ -721,8 +794,6 @@ const UserPage: React.FC<UserPageProps> = ({
                   className="w-full bg-gray-100 border border-gray-200 rounded-sm px-3 py-2 text-sm text-gray-400 outline-none cursor-not-allowed"
                 />
               </div>
-
-              {/* 3. Ô Địa chỉ Email */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
                   Địa chỉ Email *
@@ -735,15 +806,9 @@ const UserPage: React.FC<UserPageProps> = ({
                   onChange={(e) =>
                     setProfileData({ ...profileData, email: e.target.value })
                   }
-                  className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
-                    isEditing
-                      ? "bg-white border-blue-500 text-gray-800"
-                      : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed"
-                  }`}
+                  className={`w-full border rounded-sm px-3 py-2 text-sm outline-none ${isEditing ? "border-blue-500 bg-white" : "border-gray-200 bg-gray-50 text-gray-500"}`}
                 />
               </div>
-
-              {/* 4. Nhóm Tuổi & Giới tính */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
@@ -752,8 +817,6 @@ const UserPage: React.FC<UserPageProps> = ({
                   <input
                     type="number"
                     required
-                    min="1"
-                    max="120"
                     disabled={!isEditing}
                     value={profileData.age || ""}
                     onChange={(e) =>
@@ -762,11 +825,7 @@ const UserPage: React.FC<UserPageProps> = ({
                         age: Number(e.target.value),
                       })
                     }
-                    className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
-                      isEditing
-                        ? "bg-white border-blue-500 text-gray-800"
-                        : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed"
-                    }`}
+                    className={`w-full border rounded-sm px-3 py-2 text-sm outline-none ${isEditing ? "border-blue-500 bg-white" : "border-gray-200 bg-gray-50 text-gray-500"}`}
                   />
                 </div>
                 <div>
@@ -779,11 +838,7 @@ const UserPage: React.FC<UserPageProps> = ({
                     onChange={(e) =>
                       setProfileData({ ...profileData, gender: e.target.value })
                     }
-                    className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
-                      isEditing
-                        ? "bg-white border-blue-500 text-gray-800 bg-white"
-                        : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed bg-gray-50"
-                    }`}
+                    className={`w-full border rounded-sm px-3 py-2 text-sm outline-none ${isEditing ? "border-blue-500 bg-white" : "border-gray-200 bg-gray-50 text-gray-500"}`}
                   >
                     <option value="Nam">Nam</option>
                     <option value="Nữ">Nữ</option>
@@ -791,8 +846,6 @@ const UserPage: React.FC<UserPageProps> = ({
                   </select>
                 </div>
               </div>
-
-              {/* 5. Ô Địa chỉ nơi ở */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
                   Địa chỉ nơi ở *
@@ -805,42 +858,34 @@ const UserPage: React.FC<UserPageProps> = ({
                   onChange={(e) =>
                     setProfileData({ ...profileData, location: e.target.value })
                   }
-                  className={`w-full border rounded-sm px-3 py-2 text-sm transition-colors outline-none ${
-                    isEditing
-                      ? "bg-white border-blue-500 text-gray-800"
-                      : "bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed"
-                  }`}
+                  className={`w-full border rounded-sm px-3 py-2 text-sm outline-none ${isEditing ? "border-blue-500 bg-white" : "border-gray-200 bg-gray-50 text-gray-500"}`}
                 />
               </div>
-
-              {/* THANH ĐIỀU KHIỂN NÚT BẤM BẢO VỆ DỮ LIỆU */}
               <div className="flex gap-2 pt-4 border-t border-gray-100">
                 {!isEditing ? (
-                  // Chế độ CHỈ XEM: Hiện nút mở khóa sửa thông tin
                   <button
                     type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="w-full py-2 text-sm font-bold text-white bg-blue-600 rounded-sm hover:bg-blue-700 transition-colors shadow-sm text-center"
+                    onClick={() => SecretIsEditing(true)}
+                    className="w-full py-2 text-sm font-bold text-white bg-blue-600 rounded-sm hover:bg-blue-700 shadow-sm text-center"
                   >
                     ✏️ Chỉnh sửa hồ sơ
                   </button>
                 ) : (
-                  // Chế độ SỬA: Hiện cặp nút Hủy / Cập nhật
                   <>
                     <button
                       type="button"
                       onClick={() => {
-                        setIsEditing(false);
-                        fetchUserProfile(); // Quay xe, hoàn tác lại data cũ từ DB
+                        SecretIsEditing(false);
+                        fetchUserProfile();
                       }}
-                      className="flex-1 py-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-sm hover:bg-gray-200 transition-colors"
+                      className="flex-1 py-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-sm hover:bg-gray-200"
                     >
                       Hủy bỏ
                     </button>
                     <button
                       type="submit"
                       disabled={isSavingProfile}
-                      className="flex-1 py-2 text-sm font-bold text-white bg-green-600 rounded-sm hover:bg-green-700 transition-colors disabled:bg-green-400 shadow-sm"
+                      className="flex-1 py-2 text-sm font-bold text-white bg-green-600 rounded-sm hover:bg-green-700 shadow-sm"
                     >
                       {isSavingProfile ? "Đang lưu..." : "💾 Cập nhật"}
                     </button>
@@ -852,7 +897,114 @@ const UserPage: React.FC<UserPageProps> = ({
         </div>
       )}
 
-      {/* 1. POPUP SẢN PHẨM */}
+      {/* 🔒 POPUP 2: THAY ĐỔI MẬT KHẨU */}
+      {showChangePassword && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowChangePassword(false)}
+        >
+          <div
+            className="bg-white rounded-sm max-w-sm w-full relative shadow-2xl flex flex-col overflow-hidden animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+              <h2 className="text-base font-bold text-gray-800 uppercase tracking-wide">
+                🔒 Thay đổi mật khẩu
+              </h2>
+              <button
+                onClick={() => setShowChangePassword(false)}
+                className="text-gray-400 hover:text-gray-800 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <form
+              onSubmit={handleChangePasswordSubmit}
+              className="p-6 space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                  Mật khẩu hiện tại *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={passwordForm.oldPassword}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      oldPassword: e.target.value,
+                    })
+                  }
+                  className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="Nhập mật khẩu cũ đang dùng"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                  Mật khẩu mới *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={passwordForm.newPassword}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      newPassword: e.target.value,
+                    })
+                  }
+                  className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="Tối thiểu 6 ký tự"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                  Xác nhận mật khẩu mới *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      confirmPassword: e.target.value,
+                    })
+                  }
+                  className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="Nhập lại mật khẩu mới"
+                />
+              </div>
+              <div className="flex gap-2 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChangePassword(false);
+                    setPasswordForm({
+                      oldPassword: "",
+                      newPassword: "",
+                      confirmPassword: "",
+                    });
+                  }}
+                  className="flex-1 py-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-sm hover:bg-gray-200"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingPassword}
+                  className="flex-1 py-2 text-sm font-bold text-white bg-blue-600 rounded-sm hover:bg-blue-700 shadow-sm"
+                >
+                  {isSavingPassword ? "Đang lưu..." : "🔑 Đổi mật khẩu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* POPUPS PHỤ TRỢ (SẢN PHẨM, GIỎ HÀNG, ĐƠN HÀNG) */}
       {selectedProduct && (
         <div
           className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
@@ -868,7 +1020,6 @@ const UserPage: React.FC<UserPageProps> = ({
             >
               ✕
             </button>
-
             <div className="md:w-1/2 p-6 flex items-center justify-center border-r border-gray-100">
               <img
                 src={getValidImageUrl(selectedProduct.imageUrl)}
@@ -876,7 +1027,6 @@ const UserPage: React.FC<UserPageProps> = ({
                 className="max-h-96 object-contain"
               />
             </div>
-
             <div className="md:w-1/2 p-6 md:p-8 flex flex-col bg-gray-50/50">
               <span className="text-blue-600 text-xs font-bold uppercase mb-2 tracking-wider">
                 {selectedProduct.brand}
@@ -884,7 +1034,6 @@ const UserPage: React.FC<UserPageProps> = ({
               <h2 className="text-2xl text-gray-800 font-medium leading-tight mb-3">
                 {selectedProduct.name}
               </h2>
-
               <div className="flex items-center gap-3 mb-4 text-sm text-gray-600 border-b border-gray-200 pb-4">
                 {currentReviews.length > 0 ? (
                   <>
@@ -902,13 +1051,11 @@ const UserPage: React.FC<UserPageProps> = ({
                   <span className="text-gray-400">Chưa có đánh giá</span>
                 )}
               </div>
-
               <div className="bg-gray-100/80 p-4 rounded-sm mb-6">
                 <span className="text-3xl font-medium text-red-500">
                   {selectedProduct.price.toLocaleString()} ₫
                 </span>
               </div>
-
               <div className="mt-auto flex gap-3">
                 <button
                   onClick={(e) => {
@@ -916,7 +1063,7 @@ const UserPage: React.FC<UserPageProps> = ({
                     handleAddToCart(selectedProduct);
                     setSelectedProduct(null);
                   }}
-                  className="flex-1 bg-red-50 border border-red-500 text-red-600 font-medium py-3 rounded-sm hover:bg-red-100 transition-colors"
+                  className="flex-1 bg-red-50 border border-red-500 text-red-600 font-medium py-3 rounded-sm hover:bg-red-100"
                 >
                   Thêm Vào Giỏ
                 </button>
@@ -925,7 +1072,7 @@ const UserPage: React.FC<UserPageProps> = ({
                     e.stopPropagation();
                     handlePurchaseNow(selectedProduct);
                   }}
-                  className="flex-1 bg-red-500 text-white font-medium py-3 rounded-sm hover:bg-red-600 transition-colors shadow-sm"
+                  className="flex-1 bg-red-500 text-white font-medium py-3 rounded-sm hover:bg-red-600 shadow-sm"
                 >
                   Mua Ngay
                 </button>
@@ -935,7 +1082,6 @@ const UserPage: React.FC<UserPageProps> = ({
         </div>
       )}
 
-      {/* 2. POPUP GIỎ HÀNG */}
       {showCart && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div
@@ -954,7 +1100,6 @@ const UserPage: React.FC<UserPageProps> = ({
                 ✕
               </button>
             </div>
-
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {cartItems.length === 0 ? (
                 <div className="text-center text-gray-400 mt-10">
@@ -989,7 +1134,6 @@ const UserPage: React.FC<UserPageProps> = ({
                 ))
               )}
             </div>
-
             <div className="p-4 bg-white border-t border-gray-200">
               <div className="flex justify-between mb-4">
                 <span className="text-gray-600">Tổng tạm tính:</span>
@@ -1003,11 +1147,7 @@ const UserPage: React.FC<UserPageProps> = ({
               <button
                 onClick={handleCheckout}
                 disabled={cartItems.length === 0}
-                className={`w-full py-3 rounded-sm font-medium transition-colors ${
-                  cartItems.length === 0
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-red-500 text-white hover:bg-red-600"
-                }`}
+                className={`w-full py-3 rounded-sm font-medium transition-colors ${cartItems.length === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-red-500 text-white hover:bg-red-600"}`}
               >
                 Tiến hành thanh toán
               </button>
@@ -1016,7 +1156,6 @@ const UserPage: React.FC<UserPageProps> = ({
         </div>
       )}
 
-      {/* 3. POPUP ĐƠN HÀNG */}
       {showOrders && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -1035,7 +1174,6 @@ const UserPage: React.FC<UserPageProps> = ({
                 ✕
               </button>
             </div>
-
             <div className="p-4 overflow-y-auto flex-1 space-y-4">
               {userOrders.length === 0 ? (
                 <div className="text-center text-gray-500 py-10">
@@ -1064,7 +1202,6 @@ const UserPage: React.FC<UserPageProps> = ({
                         {entry.order.status}
                       </span>
                     </div>
-
                     <div className="p-3">
                       {entry.items.map((item: any, i: number) => (
                         <div
@@ -1109,7 +1246,6 @@ const UserPage: React.FC<UserPageProps> = ({
                         </div>
                       ))}
                     </div>
-
                     <div className="p-3 border-t border-gray-100 text-right bg-gray-50/50">
                       <span className="text-sm text-gray-600 mr-2">
                         Tổng số tiền:
@@ -1118,7 +1254,6 @@ const UserPage: React.FC<UserPageProps> = ({
                         {entry.order.totalAmount.toLocaleString()} ₫
                       </span>
                     </div>
-
                     {reviewForm.productId &&
                       entry.items.some(
                         (it: any) => it.product?.id === reviewForm.productId,
