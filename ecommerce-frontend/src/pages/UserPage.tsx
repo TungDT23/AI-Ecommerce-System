@@ -28,8 +28,15 @@ interface Review {
   comment: string;
   createdAt?: string;
 }
+interface UserProfile {
+  id: number;
+  username: string;
+  email: string;
+  age: number;
+  gender: string;
+  location: string;
+}
 
-// Cho phép userAuth có thể là null (Khách vãng lai)
 interface UserPageProps {
   userAuth: UserData | null;
   onLogout: () => void;
@@ -58,6 +65,11 @@ const UserPage: React.FC<UserPageProps> = ({
     comment: string;
     productId: number | null;
   }>({ rating: 5, comment: "", productId: null });
+
+  // STATE THÔNG TIN CÁ NHÂN (PROFILE MODULE)
+  const [showProfile, setShowProfile] = useState<boolean>(false);
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
 
   // BẮT SỰ KIỆN VNPAY
   useEffect(() => {
@@ -94,10 +106,10 @@ const UserPage: React.FC<UserPageProps> = ({
   // EFFECTS NẠP DỮ LIỆU
   useEffect(() => {
     fetchAllProducts();
-    // Chỉ tải giỏ hàng và gợi ý nếu đã đăng nhập
     if (userAuth) {
       fetchRecommendations();
       fetchCartHistory();
+      fetchUserProfile(); // Lấy thông tin cá nhân khi đăng nhập
     }
   }, [userAuth]);
 
@@ -139,6 +151,43 @@ const UserPage: React.FC<UserPageProps> = ({
         console.error("Lỗi lấy sản phẩm:", err);
         setAllProducts([]);
       });
+  };
+
+  const fetchUserProfile = () => {
+    if (!userAuth) return;
+    // Đồng bộ luồng gọi thông tin cá nhân từ User ID
+    fetch(`http://localhost:8888/api/users/${userAuth.userId}`, {
+      headers: { Authorization: `Bearer ${userAuth.token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setProfileData(data))
+      .catch((err) => console.error("Lỗi tải thông tin cá nhân:", err));
+  };
+
+  const handleUpdateProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userAuth || !profileData) return;
+
+    setIsSavingProfile(true);
+    fetch(`http://localhost:8888/api/users/${userAuth.userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${userAuth.token}`,
+      },
+      body: JSON.stringify(profileData),
+    })
+      .then((res) => {
+        if (res.ok) {
+          toast.success("Cập nhật thông tin cá nhân thành công!");
+          setShowProfile(false);
+          fetchUserProfile();
+        } else {
+          toast.error("Có lỗi xảy ra khi cập nhật thông tin!");
+        }
+      })
+      .catch(() => toast.error("Lỗi kết nối server Backend!"))
+      .finally(() => setIsSavingProfile(false));
   };
 
   const fetchUserOrders = () => {
@@ -186,7 +235,6 @@ const UserPage: React.FC<UserPageProps> = ({
     });
   };
 
-  // --- BẢO VỆ NÚT MUA HÀNG ---
   const handleAddToCart = (product: Product) => {
     if (!userAuth) {
       toast("Vui lòng đăng nhập để mua hàng!", { icon: "🔒" });
@@ -296,7 +344,6 @@ const UserPage: React.FC<UserPageProps> = ({
     });
   };
 
-  // LOGIC LỌC TÌM KIẾM & DANH MỤC
   const filteredProducts = allProducts.filter((p) => {
     const matchName =
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -338,12 +385,8 @@ const UserPage: React.FC<UserPageProps> = ({
         )
       : 0;
 
-  // ==========================================
-  // HÀM XỬ LÝ ẢNH (CHẶN LỖI 500 TỪ TRÌNH DUYỆT)
-  // ==========================================
   const getValidImageUrl = (url?: string) => {
     if (!url) return "https://placehold.co/400x400/eeeeee/999999?text=No+Image";
-    // Nếu không bắt đầu bằng http hoặc / thì trả về ảnh rỗng luôn
     if (!url.startsWith("http") && !url.startsWith("/")) {
       return "https://placehold.co/400x400/eeeeee/999999?text=No+Image";
     }
@@ -366,9 +409,10 @@ const UserPage: React.FC<UserPageProps> = ({
               <h1 className="text-xl font-bold text-blue-600 leading-none">
                 E-Commerce
               </h1>
-              <p className="text-[11px] text-gray-500 mt-0.5">
+              {/* FIX VẤN ĐỀ 1: SỬ DỤNG USERNAME THAY VÌ HIỂN THỊ ID THÔ SƠ */}
+              <p className="text-[11px] text-gray-500 mt-0.5 font-semibold">
                 {userAuth
-                  ? `Xin chào, ${userAuth.username || "Thành viên #" + userAuth.userId}`
+                  ? `Xin chào, ${userAuth.username || profileData?.username || "Thành viên"}`
                   : "Chào mừng khách hàng"}
               </p>
             </div>
@@ -392,6 +436,18 @@ const UserPage: React.FC<UserPageProps> = ({
           <div className="flex items-center gap-5">
             {userAuth ? (
               <>
+                {/* FIX VẤN ĐỀ 2: THÊM NÚT TRUY CẬP MODULE THÔNG TIN CÁ NHÂN */}
+                <button
+                  onClick={() => {
+                    fetchUserProfile();
+                    setShowProfile(true);
+                  }}
+                  className="text-gray-600 hover:text-blue-600 text-sm font-medium flex flex-col items-center"
+                >
+                  <span className="text-xl leading-none">👤</span>
+                  <span className="text-[10px] mt-1">Tài khoản</span>
+                </button>
+
                 <button
                   onClick={() => {
                     fetchUserOrders();
@@ -603,6 +659,135 @@ const UserPage: React.FC<UserPageProps> = ({
           </div>
         </div>
       </footer>
+
+      {/* ======================================================= */}
+      {/* 🚀 FIXED VẤN ĐỀ 2: POPUP QUẢN LÝ THÔNG TIN CÁ NHÂN (PROFILE) */}
+      {/* ======================================================= */}
+      {showProfile && profileData && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowProfile(false)}
+        >
+          <div
+            className="bg-white rounded-sm max-w-md w-full relative shadow-2xl flex flex-col overflow-hidden animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+              <h2 className="text-base font-bold text-gray-800 uppercase tracking-wide">
+                ⚙️ Hồ Sơ Cá Nhân
+              </h2>
+              <button
+                onClick={() => setShowProfile(false)}
+                className="text-gray-400 hover:text-gray-800 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProfile} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                  Tên tài khoản
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={profileData.username}
+                  className="w-full bg-gray-100 border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-500 outline-none cursor-not-allowed"
+                />
+                <span className="text-[10px] text-gray-400 mt-0.5 block">
+                  Tên tài khoản hệ thống không thể thay đổi
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                  Địa chỉ Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={profileData.email}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, email: e.target.value })
+                  }
+                  className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                    Tuổi *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    max="120"
+                    value={profileData.age || ""}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        age: Number(e.target.value),
+                      })
+                    }
+                    className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                    Giới tính
+                  </label>
+                  <select
+                    value={profileData.gender || "Nam"}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, gender: e.target.value })
+                    }
+                    className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                  >
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                    <option value="Khác">Khác</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                  Địa chỉ nơi ở *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={profileData.location}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, location: e.target.value })
+                  }
+                  className="w-full bg-white border border-gray-300 rounded-sm px-3 py-2 text-sm text-gray-800 focus:border-blue-500 outline-none transition-colors"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowProfile(false)}
+                  className="flex-1 py-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-sm hover:bg-gray-200 transition-colors"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="flex-1 py-2 text-sm font-bold text-white bg-blue-600 rounded-sm hover:bg-blue-700 transition-colors disabled:bg-blue-400 shadow-sm"
+                >
+                  {isSavingProfile ? "Đang lưu..." : "Cập nhật"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 1. POPUP SẢN PHẨM */}
       {selectedProduct && (
