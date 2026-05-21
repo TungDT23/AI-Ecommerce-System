@@ -4,16 +4,21 @@ import toast from "react-hot-toast";
 interface AuthPageProps {
   onLoginSuccess: (data: any) => void;
   onCancel: () => void; // Thêm prop để quay lại trang chủ
+  initialView?: "LOGIN" | "REGISTER" | "FORGOT_PASSWORD";
 }
 
 type AuthView = "LOGIN" | "REGISTER" | "FORGOT_PASSWORD";
 
-const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess, onCancel }) => {
-  const [currentView, setCurrentView] = useState<AuthView>("LOGIN");
+const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess, onCancel, initialView = "LOGIN" }) => {
+  const [currentView, setCurrentView] = useState<AuthView>(initialView);
   const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [age, setAge] = useState<number | "">("");
+  const [gender, setGender] = useState("");
+  const [location, setLocation] = useState("");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,14 +47,22 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess, onCancel }) => {
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !email || !password)
+    if (!username || !email || !password || !fullName || !age || !gender || !location)
       return toast.error("Điền đủ thông tin!");
 
     setIsLoading(true);
     fetch("http://localhost:8888/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ 
+        username, 
+        email, 
+        password,
+        fullName,
+        age: Number(age),
+        gender,
+        location
+      }),
     })
       .then(async (res) => {
         if (res.ok) {
@@ -154,17 +167,32 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess, onCancel }) => {
         )}
 
         {currentView === "REGISTER" && (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wide">
-                Tài khoản
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full p-2.5 rounded-sm border border-gray-300 outline-none focus:border-blue-600 transition-all text-sm"
-              />
+          <form onSubmit={handleRegister} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wide">
+                  Tài khoản
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full p-2.5 rounded-sm border border-gray-300 outline-none focus:border-blue-600 transition-all text-sm"
+                  placeholder="username"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wide">
+                  Họ và tên
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full p-2.5 rounded-sm border border-gray-300 outline-none focus:border-blue-600 transition-all text-sm"
+                  placeholder="Nguyễn Văn A"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wide">
@@ -175,6 +203,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess, onCancel }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full p-2.5 rounded-sm border border-gray-300 outline-none focus:border-blue-600 transition-all text-sm"
+                placeholder="email@example.com"
               />
             </div>
             <div>
@@ -186,12 +215,54 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess, onCancel }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full p-2.5 rounded-sm border border-gray-300 outline-none focus:border-blue-600 transition-all text-sm"
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wide">
+                  Tuổi
+                </label>
+                <input
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value ? Number(e.target.value) : "")}
+                  className="w-full p-2.5 rounded-sm border border-gray-300 outline-none focus:border-blue-600 transition-all text-sm"
+                  placeholder="Ví dụ: 25"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wide">
+                  Giới tính
+                </label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full p-2.5 rounded-sm border border-gray-300 outline-none focus:border-blue-600 transition-all text-sm bg-white"
+                >
+                  <option value="">Chọn</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wide">
+                Địa điểm
+              </label>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full p-2.5 rounded-sm border border-gray-300 outline-none focus:border-blue-600 transition-all text-sm"
+                placeholder="Hà Nội, TP.HCM..."
               />
             </div>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-green-600 text-white font-bold py-3 rounded-sm hover:bg-green-700 disabled:bg-gray-400 transition-all"
+              className="w-full bg-green-600 text-white font-bold py-3 rounded-sm hover:bg-green-700 disabled:bg-gray-400 transition-all mt-2"
             >
               {isLoading ? "Đang xử lý..." : "Đăng ký tài khoản"}
             </button>
