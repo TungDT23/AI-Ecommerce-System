@@ -10,18 +10,16 @@ def build_advanced_hybrid_model():
         print(f"[ERROR] Không tìm thấy file dữ liệu tại {dataset_path}! Hãy kiểm tra lại.")
         return
 
-    # Đọc dataset
+    # Đọc TOÀN BỘ dataset (100% dữ liệu)
     df = pd.read_csv(dataset_path)
-    print(f"[SUCCESS] Đã nạp thành công {len(df)} dòng dữ liệu từ file CSV.")
+    print(f"[SUCCESS] Đã nạp thành công toàn bộ {len(df)} dòng dữ liệu từ file CSV để huấn luyện.")
 
     # =================================================================
     # TẦNG 1: MA TRẬN CHUỖI XÍCH MARKOV BẬC 1 (Transition Matrix)
     # =================================================================
-    # Đóng khung 6 danh mục (1-6) và 30 sản phẩm gốc từ MySQL
     categories = list(range(1, 7))
     products = list(range(1, 31))
     
-    # Khởi tạo ma trận xác suất trống
     markov_matrix = {int(cat): {int(prod): 0.0 for prod in products} for cat in categories}
     cat_totals = {int(cat): 0 for cat in categories}
 
@@ -33,25 +31,21 @@ def build_advanced_hybrid_model():
             markov_matrix[cat][target_prod] += 1
             cat_totals[cat] += 1
 
-    # Chuẩn hóa tần suất thô sang xác suất toán học thuộc khoảng [0, 1]
     for cat in markov_matrix:
         total = cat_totals[cat]
         for prod in markov_matrix[cat]:
             if total > 0:
                 markov_matrix[cat][prod] = markov_matrix[cat][prod] / total
             else:
-                # Nếu một danh mục chưa có lịch sử dịch chuyển, chia đều xác suất ngẫu nhiên
                 markov_matrix[cat][prod] = 1.0 / len(products)
 
     # =================================================================
-    # TẦNG 2: BỘ LỌC HEURISTIC PROFILE (Thương hiệu & Phân khúc chi tiêu)
+    # TẦNG 2: BỘ LỌC HEURISTIC PROFILE
     # =================================================================
-    # Gom cụm các sản phẩm mục tiêu xuất hiện theo gu của người dùng
     brand_profile = df.groupby('favourite_brand')['target_next_product_id'].apply(lambda x: list(set(x))).to_dict()
     segment_profile = df.groupby('price_segment')['target_next_product_id'].apply(lambda x: list(set(x))).to_dict()
     global_popular = df['target_next_product_id'].value_counts().index.tolist()
 
-    # Đóng gói mô hình lai và xuất file vật lý .pkl vào folder models/
     os.makedirs("models", exist_ok=True)
     model_artifacts = {
         "markov_matrix": markov_matrix,
@@ -61,7 +55,7 @@ def build_advanced_hybrid_model():
     }
 
     joblib.dump(model_artifacts, "models/hybrid_markov_model.pkl")
-    print("[SUCCESS] Đã tạo và đóng gói mô hình 'models/hybrid_markov_model.pkl'!")
+    print("[SUCCESS] Đã tạo và đóng gói mô hình 'models/hybrid_markov_model.pkl' từ 100% dữ liệu gốc!")
 
 if __name__ == "__main__":
     build_advanced_hybrid_model()

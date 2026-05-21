@@ -4,6 +4,10 @@ import com.ecommerce.prediction_backend.dto.ProductRecommendationDTO;
 import com.ecommerce.prediction_backend.entity.Product;
 import com.ecommerce.prediction_backend.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.ecommerce.prediction_backend.dto.UserFeatureVector;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -15,17 +19,29 @@ import java.util.Map;
 public class AIIntegrationService {
 
     @Autowired
+    private DataAggregationService dataAggregationService;
+
+    @Autowired
     private ProductRepository productRepository;
 
     public List<ProductRecommendationDTO> getEnrichedRecommendations(Integer userId) {
         RestTemplate restTemplate = new RestTemplate();
-        String pythonApiUrl = "http://localhost:5000/api/ai/recommend/" + userId;
+        String pythonApiUrl = "http://localhost:8000/ai/predict";
         
         List<ProductRecommendationDTO> result = new ArrayList<>();
 
         try {
-            // 1. Gõ cửa AI lấy dữ liệu
-            Map<String, Object> response = restTemplate.getForObject(pythonApiUrl, Map.class);
+            // Lấy features của user
+            UserFeatureVector userFeatures = dataAggregationService.aggregateUserFeatures(userId);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<UserFeatureVector> request = new HttpEntity<>(userFeatures, headers);
+
+            // Gõ cửa AI lấy dữ liệu
+            Map<String, Object> response = restTemplate.postForObject(pythonApiUrl, request, Map.class);
+        
+
 
             if (response != null && response.containsKey("recommendations")) {
                 List<Map<String, Object>> recs = (List<Map<String, Object>>) response.get("recommendations");

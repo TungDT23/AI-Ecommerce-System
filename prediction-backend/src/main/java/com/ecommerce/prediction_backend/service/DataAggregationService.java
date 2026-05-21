@@ -3,6 +3,8 @@ package com.ecommerce.prediction_backend.service;
 import com.ecommerce.prediction_backend.dto.UserFeatureVector;
 import com.ecommerce.prediction_backend.entity.User;
 import com.ecommerce.prediction_backend.entity.UserActivity;
+import com.ecommerce.prediction_backend.entity.Product;
+import com.ecommerce.prediction_backend.repository.ProductRepository;
 import com.ecommerce.prediction_backend.repository.UserRepository;
 import com.ecommerce.prediction_backend.repository.UserActivityRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +23,9 @@ public class DataAggregationService {
 
     @Autowired
     private UserActivityRepository userActivityRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     // 1. Gom dữ liệu cho MỘT User cụ thể (Dùng để dự đoán Real-time)
     public UserFeatureVector aggregateUserFeatures(Integer userId) {
@@ -50,7 +55,7 @@ public class DataAggregationService {
 
         // Nhóm 3: Hệ sinh thái & Định vị brand (Phân tích heuristic dựa trên log mua hàng)
         feature.setFavoriteBrand(calculateFavoriteBrand(activities));
-        feature.setPriceSegment(determinePriceSegment(user.getLocation())); // Ví dụ logic định vị vùng miền
+        feature.setPriceSegment(determinePriceSegment(activities, user.getLocation())); // Ví dụ logic định vị vùng miền
         feature.setIsValueForMoney(viewCount > 20 ? 1 : 0); // Thuật toán heuristic nhận diện săn đồ hời
 
         // Nhóm 4: Chu kỳ thời gian & Chỉ số lịch sử chốt đơn
@@ -71,7 +76,8 @@ public class DataAggregationService {
                 .findFirst(); // Lấy bản ghi mới nhất do đã sort Descending
 
         if (lastPurchase.isPresent()) {
-            feature.setLastPurchasedCategoryId(4); // Giả lập mapping category_id linh hoạt
+            Product p = productRepository.findById(lastPurchase.get().getProductId()).orElse(null);
+            feature.setLastPurchasedCategoryId(p != null ? p.getCategoryId() : 4);
             long days = Duration.between(lastPurchase.get().getTimestamp(), Instant.now()).toDays();
             feature.setDaysSinceLastPurchase((int) days);
         } else {
@@ -99,13 +105,46 @@ public class DataAggregationService {
 
     // --- CÁC HÀM BỔ TRỢ ĐỂ PHÂN TÍCH GU KHÁCH HÀNG ---
     private String calculateFavoriteBrand(List<UserActivity> activities) {
-        // Heuristic bóc thương hiệu khách xem nhiều nhất, ví dụ mặc định theo dữ liệu lõi
         if (activities.isEmpty()) return "Apple";
-        return activities.size() % 2 == 0 ? "Apple" : "Samsung";
+        
+        Map<String, Integer> brandCount = new HashMap<>();
+        for (UserActivity a : activities) {
+            if (a.getProductId() != null) {
+                Product p = productRepository.findById(a.getProductId()).orElse(null);
+                if (p != null && p.getBrand() != null && !p.getBrand().isEmpty()) {
+                    brandCount.put(p.getBrand(), brandCount.getOrDefault(p.getBrand(), 0) + 1);
+                }
+            }
+        }
+        
+        if (brandCount.isEmpty()) return "Apple";
+        
+        return Collections.max(brandCount.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
-    private String determinePriceSegment(String location) {
-        if ("Hà Nội".equals(location) || "TP. Hồ Chí Minh".equals(location)) return "HIGH";
-        return "MEDIUM";
+    private String determinePriceSegment(List<UserActivity> activities, String location) {
+        if (activities.isEmpty()) {
+            if ("Hà Nội".equals(location) || "TP. Hồ Chí Minh".equals(location)) return "HIGH";
+            return "MEDIUM";
+        }
+        
+        double totalPrice = 0;
+        int count = 0;
+        for (UserActivity a : activities) {
+            if (a.getProductId() != null) {
+                Product p = productRepository.findById(a.getProductId()).orElse(null);
+                if (p != null && p.getPrice() != null) {
+                    totalPrice += p.getPrice().doubleValue();
+                    count++;
+                }
+            }
+        }
+        
+        if (count == 0) return "MEDIUM";
+        
+        double avgPrice = totalPrice / count;
+        if (avgPrice > 20000000) return "HIGH";
+        if (avgPrice > 5000000) return "MEDIUM";
+        return "LOW";
     }
 }
