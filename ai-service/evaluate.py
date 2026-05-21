@@ -1,94 +1,57 @@
+import os
 import pandas as pd
-from pymongo import MongoClient
+import joblib
 
-print("Đang tải dữ liệu từ MongoDB để kiểm thử...")
-client = MongoClient("mongodb://localhost:27017/")
-db = client["ecommerce_behavior"]
-collection = db["user_activities"]
+def evaluate_hybrid_model():
+    dataset_path = "data/ecommerce_ai_dataset.csv"
+    model_path = "models/hybrid_markov_model.pkl"
 
-data = list(collection.find({}, {"_id": 1, "user_id": 1, "product_id": 1}).sort("_id", 1))
-df = pd.DataFrame(data)
+    if not os.path.exists(dataset_path) or not os.path.exists(model_path):
+        print("[ERROR] Thiếu file data sạch hoặc file model pkl. Hãy chạy train.py trước!")
+        return
 
-if df.empty:
-    print("⚠️ Dữ liệu trống!")
-    exit()
+    df = pd.read_csv(dataset_path)
+    artifacts = joblib.load(model_path)
+    markov_matrix = artifacts["markov_matrix"]
+    brand_profile = artifacts["brand_profile"]
+    segment_profile = artifacts["segment_profile"]
 
-# ==========================================
-# BƯỚC "ĂN TIỀN": GỘP CÁC HÀNH VI LẶP LẠI (LỌC NHIỄU)
-# Tránh việc bắt AI đi dự đoán [Mua Sản phẩm A] nối tiếp [Xem Sản phẩm A]
-# ==========================================
-df['prev_product_id'] = df.groupby('user_id')['product_id'].shift(1)
-df_cleaned = df[df['product_id'] != df['prev_product_id']].copy()
-df_cleaned.drop(columns=['prev_product_id'], inplace=True)
+    hits = 0
+    total_records = len(df)
 
-# ==========================================
-# 1. TÁCH TẬP TRAIN VÀ TẬP TEST
-# ==========================================
-print("Đang chia tập dữ liệu (Train/Test Split)...")
-train_data = []
-test_data = []
+    for _, row in df.iterrows():
+        cat_state = int(row['last_purchased_category_id'])
+        brand_state = str(row['favourite_brand'])
+        segment_state = str(row['price_segment'])
+        actual_target = int(row['target_next_product_id'])
 
-grouped = df_cleaned.groupby('user_id')
-for user_id, group in grouped:
-    # Sau khi lọc nhiễu, user nào còn >= 2 chặng mua sắm mới đủ điều kiện Test
-    if len(group) >= 2:
-        user_actions = group.to_dict('records')
-        test_data.append(user_actions[-1])         
-        train_data.extend(user_actions[:-1])       
-
-train_df = pd.DataFrame(train_data)
-test_df = pd.DataFrame(test_data)
-
-print(f"Tổng số dữ liệu Train: {len(train_df)} bản ghi")
-print(f"Tổng số dữ liệu Test: {len(test_df)} bản ghi (Tương ứng {len(test_df)} User)")
-
-# ==========================================
-# 2. XÂY DỰNG MÔ HÌNH TRÊN TẬP TRAIN
-# ==========================================
-print("\nĐang huấn luyện mô hình Markov Chain trên tập Train...")
-train_df['next_product'] = train_df.groupby('user_id')['product_id'].shift(-1)
-transitions = train_df.dropna()
-# Không cần lệnh lọc != nữa vì đã xử lý sạch ở trên
-
-transition_matrix = {}
-if not transitions.empty:
-    counts = transitions.groupby(['product_id', 'next_product']).size().reset_index(name='count')
-    for current_item, group in counts.groupby('product_id'):
-        total = group['count'].sum()
-        next_items = {int(row['next_product']): row['count']/total for _, row in group.iterrows()}
-        transition_matrix[int(current_item)] = dict(sorted(next_items.items(), key=lambda x: x[1], reverse=True))
-
-# ==========================================
-# 3. ĐÁNH GIÁ TRÊN TẬP TEST
-# ==========================================
-print("\nĐang tiến hành làm bài thi (Testing)...")
-hits = 0
-total_tests = len(test_df)
-
-for _, test_row in test_df.iterrows():
-    user = test_row['user_id']
-    actual_next_item = test_row['product_id'] 
-    
-    user_train_history = train_df[train_df['user_id'] == user]
-    if not user_train_history.empty:
-        last_seen_item = int(user_train_history.iloc[-1]['product_id'])
+        # Lấy xác suất nền từ ma trận Markov
+        if cat_state not in markov_matrix:
+            cat_state = 4
         
-        predictions = []
-        if last_seen_item in transition_matrix:
-            predictions = list(transition_matrix[last_seen_item].keys())[:4]
-            
-        if actual_next_item in predictions:
+        scores = {prod: prob for prod, prob in markov_matrix[cat_state].items()}
+
+        # Áp dụng bộ lọc Heuristic cộng điểm thưởng tăng tỉ lệ chính xác
+        if brand_state in brand_profile:
+            for prod in brand_profile[brand_state]:
+                if prod in scores: scores[prod] += 0.25
+
+        if segment_state in segment_profile:
+            for prod in segment_profile[segment_state]:
+                if prod in scores: scores[prod] += 0.20
+
+        # Sản phẩm có điểm cao nhất sau khi lai
+        predicted = max(scores, key=scores.get)
+        
+        if predicted == actual_target:
             hits += 1
 
-# ==========================================
-# 4. IN KẾT QUẢ CUỐI CÙNG
-# ==========================================
-hit_rate = (hits / total_tests) * 100 if total_tests > 0 else 0
-print("\n=========================================")
-print(f"🎯 KẾT QUẢ ĐÁNH GIÁ MÔ HÌNH (HIT RATE @ 4)")
-print("=========================================")
-print(f"- Phương pháp kiểm thử: Leave-One-Out (Đã lọc nhiễu)")
-print(f"- Tổng số bài test (Users): {total_tests}")
-print(f"- Số lần AI đoán trúng:     {hits}")
-print(f"- Độ chính xác (Hit Rate):  {hit_rate:.2f}%")
-print("=========================================")
+    hit_rate = (hits / total_records) * 100
+    print("\n================ THẨM ĐỊNH HIỆU NĂNG TOÁN HỌC MARKOV LAI ================")
+    print(f"Tổng số bản ghi người dùng thực nghiệm: {total_records}")
+    print(f"Số lần thuật toán đoán chính xác sản phẩm mua tiếp theo: {hits}")
+    print(f"Chỉ số Hit Rate đạt được: {hit_rate:.2f}%")
+    print("==========================================================================")
+
+if __name__ == "__main__":
+    evaluate_hybrid_model()

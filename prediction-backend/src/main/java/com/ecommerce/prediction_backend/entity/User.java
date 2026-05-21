@@ -46,6 +46,7 @@ public class User {
     @Column(length = 100)
     private String location;
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_at", insertable = false, updatable = false)
+    @JsonProperty("createdAt")
+    private LocalDateTime createdAt;
 }
