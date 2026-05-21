@@ -18,6 +18,7 @@ function App() {
   });
 
   const [showAuth, setShowAuth] = useState(false);
+  const [authViewMode, setAuthViewMode] = useState<"LOGIN" | "REGISTER">("LOGIN");
   // State mới: Điều khiển việc bật/tắt Popup xác nhận đăng xuất
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -109,6 +110,7 @@ function App() {
           }}
         />
         <AuthPage
+          initialView={authViewMode}
           onLoginSuccess={handleLoginSuccess}
           onCancel={() => setShowAuth(false)}
         />
@@ -129,7 +131,14 @@ function App() {
         userAuth={userAuth}
         // Truyền hàm bật popup thay vì gọi window.confirm
         onLogout={() => setShowLogoutConfirm(true)}
-        onLoginClick={() => setShowAuth(true)}
+        onLoginClick={() => {
+          setAuthViewMode("LOGIN");
+          setShowAuth(true);
+        }}
+        onRegisterClick={() => {
+          setAuthViewMode("REGISTER");
+          setShowAuth(true);
+        }}
       />
       <LogoutModal />
     </>

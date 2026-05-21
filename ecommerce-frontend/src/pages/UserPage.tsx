@@ -41,12 +41,14 @@ interface UserPageProps {
   userAuth: UserData | null;
   onLogout: () => void;
   onLoginClick: () => void;
+  onRegisterClick: () => void;
 }
 
 const UserPage: React.FC<UserPageProps> = ({
   userAuth,
   onLogout,
   onLoginClick,
+  onRegisterClick,
 }) => {
   // STATE MUA SẮM CỦA USER
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -482,12 +484,20 @@ const UserPage: React.FC<UserPageProps> = ({
                 </button>
               </>
             ) : (
-              <button
-                onClick={onLoginClick}
-                className="bg-blue-600 text-white px-5 py-2 text-sm font-bold rounded-sm hover:bg-blue-700 transition-colors shadow-sm"
-              >
-                Đăng nhập
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={onLoginClick}
+                  className="bg-blue-600 text-white px-5 py-2 text-sm font-bold rounded-sm hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                  Đăng nhập
+                </button>
+                <button
+                  onClick={onRegisterClick}
+                  className="bg-white text-blue-600 border border-blue-600 px-5 py-2 text-sm font-bold rounded-sm hover:bg-blue-50 transition-colors shadow-sm"
+                >
+                  Đăng ký
+                </button>
+              </div>
             )}
           </div>
         </div>

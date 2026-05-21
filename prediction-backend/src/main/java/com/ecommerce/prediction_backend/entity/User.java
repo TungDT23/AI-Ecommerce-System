@@ -22,6 +22,9 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
+    @Column(name = "full_name", length = 100)
+    private String fullName;
+
     // =========================================
     // THÊM 2 CỘT NÀY PHỤC VỤ BẢO MẬT & PHÂN QUYỀN
     @Column(nullable = false)
