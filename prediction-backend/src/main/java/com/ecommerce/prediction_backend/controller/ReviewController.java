@@ -14,13 +14,11 @@ public class ReviewController {
 
     @Autowired private ReviewRepository reviewRepository;
 
-    // API: Gửi đánh giá mới
     @PostMapping
     public ResponseEntity<?> createReview(@RequestBody Review review) {
         return ResponseEntity.ok(reviewRepository.save(review));
     }
 
-    // API: Lấy danh sách đánh giá theo ID sản phẩm
     @GetMapping("/product/{productId}")
     public List<Review> getProductReviews(@PathVariable Integer productId) {
         return reviewRepository.findByProduct_IdOrderByCreatedAtDesc(productId);

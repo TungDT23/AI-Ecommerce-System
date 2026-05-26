@@ -28,7 +28,6 @@ public class UserActivityController {
     @Autowired
     private com.ecommerce.prediction_backend.service.DataAggregationService dataAggregationService;
 
-    // 1. API LẤY GIỎ HÀNG: Đã sửa lỗi gọi đúng hàm Custom Query của Repository
     @GetMapping("/cart/{userId}")
     public List<Product> getCartHistory(@PathVariable Integer userId) {
         // Chỉ lấy các hành vi add_to_cart thực sự còn hiệu lực trong DB
@@ -39,14 +38,12 @@ public class UserActivityController {
             .collect(Collectors.toList());
     }
 
-    // 2. API TRACKING HÀNH VI: Giữ nguyên chuẩn Instant sạch sẽ
     @PostMapping("/track")
     public UserActivity trackActivity(@RequestBody UserActivity activity) {
         activity.setTimestamp(Instant.now()); 
         return userActivityRepository.save(activity);
     }
 
-    // 3. API XÓA KHỎI GIỎ: Sử dụng hàm lấy danh sách theo thời gian mới nhất để lọc xóa
     @DeleteMapping("/cart/{userId}/{productId}")
     public ResponseEntity<?> removeProductFromCart(@PathVariable Integer userId, @PathVariable Integer productId) {
         // Dùng hàm chuẩn đã khai báo trong Repository để check
@@ -62,7 +59,6 @@ public class UserActivityController {
         return ResponseEntity.notFound().build();
     }
 
-    // 4. API Xuất ma trận 15 đặc trưng: GET http://localhost:8888/api/activities/ai-features
     @GetMapping("/ai-features")
     public ResponseEntity<List<UserFeatureVector>> getAiFeaturesMatrix() {
         return ResponseEntity.ok(dataAggregationService.aggregateAllUsersFeatures());

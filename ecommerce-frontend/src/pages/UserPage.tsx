@@ -203,9 +203,7 @@ const UserPage: React.FC<UserPageProps> = ({
       .finally(() => setIsSavingProfile(false));
   };
 
-  // ========================================================
   // 🔒 LOGIC ĐỔI MẬT KHẨU KHÔNG BỊ HIỆN DIALOG ĐĂNG XUẤT PHỤ
-  // ========================================================
   const handleChangePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!userAuth) return;
@@ -232,19 +230,16 @@ const UserPage: React.FC<UserPageProps> = ({
     )
       .then(async (res) => {
         if (res.ok) {
-          // 1. Tắt toàn bộ các popup liên quan đến tài khoản
           setShowChangePassword(false);
           setShowProfile(false);
           setShowDropdown(false);
 
-          // 2. Reset nhanh form dữ liệu
           setPasswordForm({
             oldPassword: "",
             newPassword: "",
             confirmPassword: "",
           });
 
-          // 3. Hiển thị thông báo Toast chuẩn chỉnh kéo dài 3.5 giây
           toast.success(
             "Đổi mật khẩu thành công, mời bạn đăng nhập lại để tiếp tục sử dụng!",
             {
@@ -252,14 +247,12 @@ const UserPage: React.FC<UserPageProps> = ({
               icon: "🔑",
             },
           );
+     
+          localStorage.removeItem("userAuth"); 
 
-          // 4. CHỐT HẠ: Tự làm sạch dữ liệu đăng nhập và nhảy ra trang chủ (Không gọi onLogout để tránh trôi modal cũ)
-          localStorage.removeItem("userAuth"); // Xóa session token lưu ở trình duyệt của sếp
-
-          // Tự reload nhẹ hoặc kích hoạt reset state phiên làm việc tùy theo cấu hình App
           setTimeout(() => {
-            window.location.href = "/"; // Đẩy thẳng trình duyệt về trang chủ sạch sẽ
-          }, 3500); // Chờ hộp thoại ở trên biến mất trong 3.5 giây rồi chuyển trang luôn!
+            window.location.href = "/"; 
+          }, 3500); 
         } else {
           const errMsg = await res.text();
           toast.error(errMsg || "Mật khẩu cũ không chính xác!");

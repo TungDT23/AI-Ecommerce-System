@@ -10,13 +10,10 @@ def build_advanced_hybrid_model():
         print(f"[ERROR] Không tìm thấy file dữ liệu tại {dataset_path}! Hãy kiểm tra lại.")
         return
 
-    # Đọc TOÀN BỘ dataset (100% dữ liệu)
     df = pd.read_csv(dataset_path)
     print(f"[SUCCESS] Đã nạp thành công toàn bộ {len(df)} dòng dữ liệu từ file CSV để huấn luyện.")
 
-    # =================================================================
     # TẦNG 1: MA TRẬN CHUỖI XÍCH MARKOV BẬC 1 (Transition Matrix)
-    # =================================================================
     categories = list(range(1, 7))
     products = list(range(1, 31))
     
@@ -39,9 +36,7 @@ def build_advanced_hybrid_model():
             else:
                 markov_matrix[cat][prod] = 1.0 / len(products)
 
-    # =================================================================
     # TẦNG 2: BỘ LỌC HEURISTIC PROFILE
-    # =================================================================
     brand_profile = df.groupby('favourite_brand')['target_next_product_id'].apply(lambda x: list(set(x))).to_dict()
     segment_profile = df.groupby('price_segment')['target_next_product_id'].apply(lambda x: list(set(x))).to_dict()
     global_popular = df['target_next_product_id'].value_counts().index.tolist()

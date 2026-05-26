@@ -157,11 +157,9 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
       : `Khách hàng #${id}`;
   };
 
-  // ==========================================
   // 📊 LOGIC 1: XUẤT BÁO CÁO EXCEL CHỈ ĐƠN HOÀN THÀNH
-  // ==========================================
+
   const handleExportExcel = () => {
-    // CHỈ LỌC CÁC ĐƠN ĐÃ GIAO HÀNG THÀNH CÔNG (HOÀN THÀNH)
     const completedOrdersList = adminOrders.filter(
       (o) => o.status === "HOÀN THÀNH",
     );
@@ -177,7 +175,6 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
     );
     const formatCSV = (val: any) => `"${String(val).replace(/"/g, '""')}"`;
 
-    // Thiết kế cấu trúc bảng tổng quan chiều dọc sang xịn mịn
     const rowTitle = ["BÁO CÁO DOANH THU THỰC TẾ (HỆ THỐNG AI E-COMMERCE)"];
     const rowTime = [
       "Thời gian xuất báo cáo:",
@@ -234,9 +231,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ userAuth, onLogout }) => {
     toast.success("Xuất file báo cáo doanh thu thực tế thành công!");
   };
 
-  // ==========================================
   // 🖨️ LOGIC 2: IN BÁO CÁO VĂN BẢN KÝ DUYỆT (CHỈ ĐƠN HOÀN THÀNH)
-  // ==========================================
   const handlePrintReport = () => {
     // CHỈ LỌC CÁC ĐƠN ĐÃ GIAO HÀNG THÀNH CÔNG (HOÀN THÀNH)
     const completedOrdersList = adminOrders.filter(

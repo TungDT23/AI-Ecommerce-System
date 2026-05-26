@@ -29,36 +29,26 @@ public class PaymentController {
             vnp_Params.put("vnp_Amount", String.valueOf(amount * 100)); // VNPay yêu cầu nhân 100
             vnp_Params.put("vnp_CurrCode", "VND");
             
-            // Mã giao dịch ghép với thời gian để đảm bảo không bị trùng lặp
             vnp_Params.put("vnp_TxnRef", orderId + "_" + System.currentTimeMillis()); 
             
-            // FIX 1: Viết liền không dấu cách để tránh lỗi Encode URL của VNPay
             vnp_Params.put("vnp_OrderInfo", "Thanh_toan_don_hang_ma_" + orderId);
             
-            // FIX 2: Bổ sung tham số bắt buộc (Loại hàng hóa: other)
             vnp_Params.put("vnp_OrderType", "other");
             
             vnp_Params.put("vnp_Locale", "vn");
             vnp_Params.put("vnp_ReturnUrl", vnp_ReturnUrl);
             vnp_Params.put("vnp_IpAddr", "127.0.0.1");
 
-            // =========================================================
             // FIX LỖI TIMEZONE VNPAY QUÁ HẠN 15 PHÚT
-            // =========================================================
-            // 1. Khởi tạo lịch với chuẩn múi giờ Việt Nam
             Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
             SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
             
-            // 2. Ép cứng bộ định dạng chuỗi cũng phải dùng giờ Việt Nam
             formatter.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
             
-            // 3. Ghi nhận thời gian tạo và thời gian hết hạn (+15 phút)
             vnp_Params.put("vnp_CreateDate", formatter.format(cld.getTime()));
             cld.add(Calendar.MINUTE, 15);
             vnp_Params.put("vnp_ExpireDate", formatter.format(cld.getTime()));
-            // =========================================================
 
-            // Chuẩn bị dữ liệu để băm bảo mật
             List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
             Collections.sort(fieldNames);
             StringBuilder hashData = new StringBuilder();
@@ -77,7 +67,6 @@ public class PaymentController {
                 }
             }
             
-            // Ký số (Tạo chữ ký điện tử)
             String queryUrl = query.toString();
             String vnp_SecureHash = hmacSHA512(vnp_HashSecret, hashData.toString());
             queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
@@ -91,7 +80,6 @@ public class PaymentController {
         }
     }
 
-    // Hàm tạo chữ ký điện tử chuẩn VNPay
     private String hmacSHA512(final String key, final String data) throws Exception {
         Mac hmac512 = Mac.getInstance("HmacSHA512");
         SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");

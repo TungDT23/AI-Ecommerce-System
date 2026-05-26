@@ -17,7 +17,7 @@ public class OrderController {
     @Autowired private OrderRepository orderRepository;
     @Autowired private OrderItemRepository orderItemRepository; 
 
-    // 1. CHỐT ĐƠN: Nhận giỏ hàng từ React và tạo Hóa đơn
+    // 1. CHỐT ĐƠN
     @PostMapping("/checkout/{userId}")
     public ResponseEntity<?> checkout(@PathVariable Integer userId, @RequestBody List<Product> cartItems) {
         if (cartItems.isEmpty()) return ResponseEntity.badRequest().body("Giỏ hàng trống!");
@@ -27,29 +27,27 @@ public class OrderController {
             total = total.add(p.getPrice());
         }
 
-        // Tạo Đơn hàng gốc
         Order order = new Order();
         User userRef = new User();
         userRef.setId(userId);
         order.setUser(userRef); 
         order.setTotalAmount(total);
-        order.setStatus("CHỜ THANH TOÁN"); // Sửa lại một chút: Lúc mới tạo thì để là chờ thanh toán
+        order.setStatus("CHỜ THANH TOÁN");
         Order savedOrder = orderRepository.save(order);
 
-        // Lưu chi tiết từng món vào OrderItem theo đúng cấu trúc của Tùng
         for (Product p : cartItems) {
             OrderItem item = new OrderItem();
-            item.setOrder(savedOrder); // Gán object Order
-            item.setProduct(p);        // Gán object Product
+            item.setOrder(savedOrder); 
+            item.setProduct(p);        
             item.setPriceAtPurchase(p.getPrice());
-            item.setQuantity(1);       // Tạm thời set mặc định là 1 cho mỗi lượt click
+            item.setQuantity(1);       
             orderItemRepository.save(item);
         }
         
         return ResponseEntity.ok(savedOrder);
     }
 
-    // 2. KHÁCH HÀNG: Xem Lịch sử mua hàng
+    // 2. KHÁCH HÀNG
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUserOrders(@PathVariable Integer userId) {
         List<Order> orders = orderRepository.findByUser_IdOrderByIdDesc(userId);
@@ -65,7 +63,7 @@ public class OrderController {
         return ResponseEntity.ok(result);
     }
 
-    // 3. ADMIN: Lấy danh sách toàn bộ đơn hàng
+    // 3. ADMIN
     @GetMapping("/admin/all")
     public ResponseEntity<?> getAllOrders() {
         List<Order> orders = orderRepository.findAll();
@@ -73,7 +71,7 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
-    // 4. ADMIN: Cập nhật trạng thái
+    // 4. ADMIN
     @PutMapping("/admin/{orderId}/status")
     public ResponseEntity<?> updateStatus(@PathVariable Integer orderId, @RequestParam String status) {
         Optional<Order> opt = orderRepository.findById(orderId);
@@ -85,7 +83,7 @@ public class OrderController {
         return ResponseEntity.notFound().build();
     }
 
-    // 5. VNPAY CONFIRM: Cập nhật trạng thái dựa trên mã phản hồi từ VNPay (MỚI THÊM)
+    // 5. VNPAY CONFIRM
     @PutMapping("/payment-confirm/{orderId}")
     public ResponseEntity<?> confirmPayment(@PathVariable Integer orderId, @RequestParam String responseCode) {
         Optional<Order> opt = orderRepository.findById(orderId);

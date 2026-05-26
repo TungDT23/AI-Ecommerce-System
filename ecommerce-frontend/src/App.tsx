@@ -18,7 +18,9 @@ function App() {
   });
 
   const [showAuth, setShowAuth] = useState(false);
-  const [authViewMode, setAuthViewMode] = useState<"LOGIN" | "REGISTER">("LOGIN");
+  const [authViewMode, setAuthViewMode] = useState<"LOGIN" | "REGISTER">(
+    "LOGIN",
+  );
   // State mới: Điều khiển việc bật/tắt Popup xác nhận đăng xuất
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -71,9 +73,7 @@ function App() {
     );
   };
 
-  // ==============================================================
   // RENDER GIAO DIỆN CHÍNH
-  // ==============================================================
 
   // 1. TRƯỜNG HỢP ADMIN: Luôn yêu cầu đăng nhập
   if (userAuth?.role === "ROLE_ADMIN") {

@@ -17,13 +17,11 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
-    // 1. Endpoint cũ: Lấy danh sách toàn bộ Users
     @GetMapping
     public List<User> getUsers() {
         return userRepository.findAll();
     }
 
-    // 2. Endpoint: Lấy thông tin chi tiết của 1 User theo ID (Dùng cho popup Hồ Sơ)
     @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable int id) {
         Optional<User> userOpt = userRepository.findById(id);
@@ -34,7 +32,6 @@ public class UserController {
         }
     }
 
-    // 3. Endpoint: Cập nhật thông tin cá nhân (Đã đồng bộ trường Họ và Tên)
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable int id, @RequestBody User userDetails) {
         Optional<User> userOpt = userRepository.findById(id);
@@ -45,9 +42,6 @@ public class UserController {
 
         User existingUser = userOpt.get();
         
-        // ==========================================================
-        // ✨ ĐÃ BỔ SUNG GÁN HỌ VÀ TÊN THỰC TẾ TRƯỚC KHI LƯU VÀO DB
-        // ==========================================================
         existingUser.setFullName(userDetails.getFullName());
         
         existingUser.setEmail(userDetails.getEmail());
@@ -55,13 +49,11 @@ public class UserController {
         existingUser.setGender(userDetails.getGender());
         existingUser.setLocation(userDetails.getLocation());
         
-        // Lưu lại vào Database thông qua Repository
         User updatedUser = userRepository.save(existingUser);
         
         return ResponseEntity.ok(updatedUser);
     }
 
-    // 4. API MỚI: Thay đổi mật khẩu cho tài khoản
     @PutMapping("/{id}/change-password")
     public ResponseEntity<?> changePassword(@PathVariable int id, @RequestBody java.util.Map<String, String> passwords) {
         Optional<User> userOpt = userRepository.findById(id);
@@ -73,12 +65,10 @@ public class UserController {
         String oldPassword = passwords.get("oldPassword");
         String newPassword = passwords.get("newPassword");
 
-        // Kiểm tra mật khẩu cũ gửi lên xem có khớp trong DB không
         if (!user.getPassword().equals(oldPassword)) {
             return ResponseEntity.badRequest().body("Mật khẩu cũ không chính xác!");
         }
 
-        // Cập nhật mật khẩu mới (chữ thô vì cấu hình NoOpPasswordEncoder)
         user.setPassword(newPassword);
         userRepository.save(user);
 
