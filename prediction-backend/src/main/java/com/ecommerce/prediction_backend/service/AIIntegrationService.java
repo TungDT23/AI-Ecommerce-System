@@ -24,6 +24,7 @@ public class AIIntegrationService {
     @Autowired
     private ProductRepository productRepository;
 
+    @SuppressWarnings("unchecked")
     public List<ProductRecommendationDTO> getEnrichedRecommendations(Integer userId) {
         RestTemplate restTemplate = new RestTemplate();
         String pythonApiUrl = "http://localhost:8000/ai/predict";

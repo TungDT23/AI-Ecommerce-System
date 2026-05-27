@@ -16,7 +16,11 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false)
+    // BỔ SUNG: Khớp mã SKU của tệp Kaggle (Sửa lỗi Column 'sku' cannot be null)
+    @Column(nullable = false, unique = true, length = 50)
+    private String sku;
+
+    @Column(nullable = false, length = 255)
     private String name;
 
     @Column(name = "category_id")
@@ -28,7 +32,7 @@ public class Product {
     @Column(length = 50)
     private String brand;
 
-    @Column(name="image_url", length=500)
+    @Column(name = "image_url", length = 500)
     private String imageUrl;
 
     @Column(name = "created_at", updatable = false)

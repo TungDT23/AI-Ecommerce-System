@@ -17,7 +17,7 @@ public class OrderController {
     @Autowired private OrderRepository orderRepository;
     @Autowired private OrderItemRepository orderItemRepository; 
 
-    // 1. CHỐT ĐƠN
+    // 1. CHỐT ĐƠN: Nhận giỏ hàng từ React và tạo Hóa đơn
     @PostMapping("/checkout/{userId}")
     public ResponseEntity<?> checkout(@PathVariable Integer userId, @RequestBody List<Product> cartItems) {
         if (cartItems.isEmpty()) return ResponseEntity.badRequest().body("Giỏ hàng trống!");
@@ -32,22 +32,23 @@ public class OrderController {
         userRef.setId(userId);
         order.setUser(userRef); 
         order.setTotalAmount(total);
-        order.setStatus("CHỜ THANH TOÁN");
+        order.setStatus("CHỜ THANH TOÁN"); // Sửa lại một chút: Lúc mới tạo thì để là chờ thanh toán
         Order savedOrder = orderRepository.save(order);
 
+        // Lưu chi tiết từng món vào OrderItem theo đúng cấu trúc của Tùng
         for (Product p : cartItems) {
             OrderItem item = new OrderItem();
             item.setOrder(savedOrder); 
             item.setProduct(p);        
             item.setPriceAtPurchase(p.getPrice());
-            item.setQuantity(1);       
+            item.setQuantity(1);       // Tạm thời set mặc định là 1 cho mỗi lượt click
             orderItemRepository.save(item);
         }
         
         return ResponseEntity.ok(savedOrder);
     }
 
-    // 2. KHÁCH HÀNG
+    // 2. KHÁCH HÀNG: Xem Lịch sử mua hàng
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUserOrders(@PathVariable Integer userId) {
         List<Order> orders = orderRepository.findByUser_IdOrderByIdDesc(userId);
@@ -56,7 +57,6 @@ public class OrderController {
         for(Order o : orders) {
             Map<String, Object> map = new HashMap<>();
             map.put("order", o);
-            // Dùng hàm mới của OrderItemRepository
             map.put("items", orderItemRepository.findByOrder_Id(o.getId())); 
             result.add(map);
         }
@@ -83,7 +83,7 @@ public class OrderController {
         return ResponseEntity.notFound().build();
     }
 
-    // 5. VNPAY CONFIRM
+    // 5. VNPAY CONFIRM: Cập nhật trạng thái dựa trên mã phản hồi từ VNPay (MỚI THÊM)
     @PutMapping("/payment-confirm/{orderId}")
     public ResponseEntity<?> confirmPayment(@PathVariable Integer orderId, @RequestParam String responseCode) {
         Optional<Order> opt = orderRepository.findById(orderId);
@@ -92,6 +92,9 @@ public class OrderController {
             // Mã "00" là giao dịch thành công theo chuẩn VNPay
             if ("00".equals(responseCode)) {
                 order.setStatus("ĐÃ THANH TOÁN");
+                
+                // Sếp có thể tùy biến cập nhật thêm hình thức thanh toán khi dùng VNPay thực tế:
+                order.setPaymentMethod("VNPay Wallet/Credit Card");
             } else {
                 order.setStatus("THANH TOÁN THẤT BẠI");
             }

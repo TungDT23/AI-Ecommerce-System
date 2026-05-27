@@ -27,6 +27,14 @@ public class Order {
     @Column(length = 50)
     private String status;
 
+    // BỔ SUNG 1: Khớp trường phương thức thanh toán (Credit Card, PayPal, Cash...)
+    @Column(name = "payment_method", length = 50)
+    private String paymentMethod;
+
+    // BỔ SUNG 2: Khớp trường hình thức vận chuyển (Standard, Express, Overnight...)
+    @Column(name = "shipping_type", length = 50)
+    private String shippingType;
+
     @Column(name = "order_date", updatable = false)
     private LocalDateTime orderDate = LocalDateTime.now();
 }
