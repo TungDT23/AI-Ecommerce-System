@@ -17,7 +17,10 @@ public class OrderController {
     @Autowired private OrderRepository orderRepository;
     @Autowired private OrderItemRepository orderItemRepository; 
 
-    // 1. CHỐT ĐƠN: Nhận giỏ hàng từ React và tạo Hóa đơn
+    /**
+     * 1. CHỐT ĐƠN: Nhận giỏ hàng từ Frontend và tạo Hóa đơn
+     * (Đã bổ sung gán giá trị mặc định cho Vận chuyển, Thanh toán, Đồ mua kèm để khớp DB mới)
+     */
     @PostMapping("/checkout/{userId}")
     public ResponseEntity<?> checkout(@PathVariable Integer userId, @RequestBody List<Product> cartItems) {
         if (cartItems.isEmpty()) return ResponseEntity.badRequest().body("Giỏ hàng trống!");
@@ -33,23 +36,34 @@ public class OrderController {
         userRef.setId(userId);
         order.setUser(userRef); 
         order.setTotalAmount(total);
-        order.setStatus("CHỜ THANH TOÁN"); // Sửa lại một chút: Lúc mới tạo thì để là chờ thanh toán
+        order.setStatus("CHỜ THANH TOÁN"); 
+        
+        // BỔ SUNG CHO DATASET MỚI: Đặt giá trị mặc định ban đầu cho phương thức thanh toán và ship
+        // Frontend sau này có thể truyền thêm dữ liệu này lên nếu sếp làm thêm ô chọn (Select Box)
+        order.setPaymentMethod("Credit Card"); // Mặc định khớp với tệp Kaggle
+        order.setShippingType("Standard");     // Mặc định khớp với tệp Kaggle
+        
         Order savedOrder = orderRepository.save(order);
 
-        // Lưu chi tiết từng món vào OrderItem theo đúng cấu trúc của Tùng
+        // Lưu chi tiết từng món vào OrderItem
         for (Product p : cartItems) {
             OrderItem item = new OrderItem();
-            item.setOrder(savedOrder); // Gán object Order
-            item.setProduct(p);        // Gán object Product
+            item.setOrder(savedOrder); 
+            item.setProduct(p);        
             item.setPriceAtPurchase(p.getPrice());
-            item.setQuantity(1);       // Tạm thời set mặc định là 1 cho mỗi lượt click
+            item.setQuantity(1);       
+            
+            // BỔ SUNG CHO DATASET MỚI: Gán mặc định không mua kèm phụ kiện đặc biệt lúc chốt đơn lẻ
+            item.setAddonsPurchased("None");
+            item.setAddonTotal(BigDecimal.ZERO);
+            
             orderItemRepository.save(item);
         }
         
         return ResponseEntity.ok(savedOrder);
     }
 
-    // 2. KHÁCH HÀNG: Xem Lịch sử mua hàng
+    // 2. KHÁCH HÀNG: Xem Lịch sử mua hàng (Giữ nguyên luồng chuẩn của sếp)
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUserOrders(@PathVariable Integer userId) {
         List<Order> orders = orderRepository.findByUser_IdOrderByIdDesc(userId);
@@ -58,7 +72,6 @@ public class OrderController {
         for(Order o : orders) {
             Map<String, Object> map = new HashMap<>();
             map.put("order", o);
-            // Dùng hàm mới của OrderItemRepository
             map.put("items", orderItemRepository.findByOrder_Id(o.getId())); 
             result.add(map);
         }
@@ -85,7 +98,10 @@ public class OrderController {
         return ResponseEntity.notFound().build();
     }
 
-    // 5. VNPAY CONFIRM: Cập nhật trạng thái dựa trên mã phản hồi từ VNPay (MỚI THÊM)
+    /**
+     * 5. VNPAY CONFIRM: Cập nhật trạng thái dựa trên mã phản hồi từ VNPay
+     * ĐỂ NEO LUỒNG AI: Khi chuyển thành 'ĐÃ THANH TOÁN', lập tức đơn hàng này trở thành dữ liệu đầu vào cho AI Markov gợi ý sản phẩm tiếp theo!
+     */
     @PutMapping("/payment-confirm/{orderId}")
     public ResponseEntity<?> confirmPayment(@PathVariable Integer orderId, @RequestParam String responseCode) {
         Optional<Order> opt = orderRepository.findById(orderId);
@@ -94,6 +110,9 @@ public class OrderController {
             // Mã "00" là giao dịch thành công theo chuẩn VNPay
             if ("00".equals(responseCode)) {
                 order.setStatus("ĐÃ THANH TOÁN");
+                
+                // Sếp có thể tùy biến cập nhật thêm hình thức thanh toán khi dùng VNPay thực tế:
+                order.setPaymentMethod("VNPay Wallet/Credit Card");
             } else {
                 order.setStatus("THANH TOÁN THẤT BẠI");
             }
