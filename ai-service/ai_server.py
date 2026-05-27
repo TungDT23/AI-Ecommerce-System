@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional
 import joblib
 import numpy as np
 import os
@@ -11,8 +12,28 @@ MODEL_PATH = "models/hybrid_markov_model.pkl"
 
 # Định nghĩa cấu trúc dữ liệu Java Spring Boot sẽ bắn sang
 class PredictionRequest(BaseModel):
-    user_id: int
-    last_purchased_category_id: int  # Mã danh mục sản phẩm vừa mua gần nhất (1-5)
+    user_id: int = Field(alias="userId", default=0)
+    last_purchased_category_id: int = Field(alias="lastPurchasedCategoryId", default=4)
+
+    class Config:
+        populate_by_name = True
+
+class AIPredictRequest(BaseModel):
+    userId: Optional[int] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    location: Optional[str] = None
+    viewCount: Optional[int] = None
+    cartItemCount: Optional[int] = None
+    favoriteBrand: Optional[str] = None
+    priceSegment: Optional[str] = None
+    isValueForMoney: Optional[int] = None
+    lastPurchasedCategoryId: Optional[int] = 4
+    daysSinceLastPurchase: Optional[int] = None
+    totalPurchases: Optional[int] = None
+    totalItemsPurchased: Optional[int] = None
+    userConversionRate: Optional[float] = None
+    targetNextProductId: Optional[int] = None
 
 @app.post("/predict")
 def predict_next_product(request: PredictionRequest):
@@ -63,6 +84,61 @@ def predict_next_product(request: PredictionRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+
+@app.post("/ai/predict")
+def predict_next_products_ai(request: AIPredictRequest):
+    if not os.path.exists(MODEL_PATH):
+        raise HTTPException(status_code=500, detail="Model file not found. Please run train.py first.")
+        
+    try:
+        artifacts = joblib.load(MODEL_PATH)
+        # Using same logic as test_new_users.py
+        markov_matrix = artifacts.get("markov_matrix", {})
+        brand_profile = artifacts.get("brand_profile", {})
+        segment_profile = artifacts.get("segment_profile", {})
+        global_popular = artifacts.get("global_popular", [])
+        
+        cat_state = request.lastPurchasedCategoryId if request.lastPurchasedCategoryId else 4
+        brand_state = request.favoriteBrand if request.favoriteBrand else "Unknown"
+        segment_state = request.priceSegment if request.priceSegment else "MEDIUM"
+        
+        if cat_state not in markov_matrix:
+            cat_state = 4
+            
+        scores = {prod: prob for prod, prob in markov_matrix.get(cat_state, {}).items()}
+        
+        if brand_state in brand_profile:
+            for prod in brand_profile[brand_state]:
+                if prod in scores: scores[prod] += 0.25
+                
+        if segment_state in segment_profile:
+            for prod in segment_profile[segment_state]:
+                if prod in scores: scores[prod] += 0.20
+                
+        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        
+        recommendations = []
+        for prod, prob in sorted_scores[:4]:
+            recommendations.append({"productId": prod, "confidenceScore": round(min(prob, 1.0), 2)})
+            
+        if len(recommendations) < 4:
+            for pop in global_popular:
+                if len(recommendations) >= 4:
+                    break
+                if not any(r["productId"] == int(pop) for r in recommendations):
+                    recommendations.append({"productId": int(pop), "confidenceScore": 0.01})
+                    
+        return {"recommendations": recommendations}
+
+    except Exception as e:
+        print(f"Error in /ai/predict: {e}")
+        # fallback
+        return {
+            "recommendations": [
+                {"productId": 1, "confidenceScore": 0.5},
+                {"productId": 2, "confidenceScore": 0.4}
+            ]
+        }
 
 if __name__ == "__main__":
     import uvicorn

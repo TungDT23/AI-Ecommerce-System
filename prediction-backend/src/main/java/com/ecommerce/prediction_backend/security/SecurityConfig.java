@@ -42,7 +42,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/recommendation/**", "/api/activities/**").permitAll()
                 
                 // KHU VỰC CẤM: Chỉ ADMIN mới được vào
-                .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/admin/**", "/api/orders/admin/**").hasAnyAuthority("ROLE_ADMIN", "ADMIN")
                 
                 // Các request khác tạm thời cho phép
                 .anyRequest().permitAll()

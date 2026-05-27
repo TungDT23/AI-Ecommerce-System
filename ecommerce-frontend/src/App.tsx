@@ -76,7 +76,7 @@ function App() {
   // RENDER GIAO DIỆN CHÍNH
 
   // 1. TRƯỜNG HỢP ADMIN: Luôn yêu cầu đăng nhập
-  if (userAuth?.role === "ROLE_ADMIN") {
+  if (userAuth?.role === "ROLE_ADMIN" || userAuth?.role === "ADMIN") {
     return (
       <>
         <Toaster
