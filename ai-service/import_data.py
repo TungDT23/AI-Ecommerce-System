@@ -112,10 +112,26 @@ def clean_and_import_data():
     sku_to_db_id = {} # Lưu vết để map bảng order_items phía sau
     current_p_id = 1
     
+    real_prices = {
+        'SKU1004': 23990000.0,
+        'SKU1002': 14490000.0,
+        'SKU1005': 29490000.0,
+        'SKU1001': 24990000.0,
+        'SKU1003': 6490000.0,
+        'LTP123': 19190000.0,
+        'SMP234': 25290000.0,
+        'TBL345': 8600000.0,
+        'HDP456': 2890000.0,
+        'SWT567': 6490000.0
+    }
+    
     for _, row in unique_skus.iterrows():
         sku_code = str(row['SKU'])
-        # Nhân với tỷ giá 25000 để chuyển đổi từ USD sang VND cho hợp lý
-        price_val = float(row['Unit Price']) * 25000
+        if sku_code in real_prices:
+            price_val = real_prices[sku_code]
+        else:
+            # Nhân với tỷ giá 25000 để chuyển đổi từ USD sang VND cho hợp lý
+            price_val = float(row['Unit Price']) * 25000
         
         if sku_code in sku_name_mapping:
             p_name, cat_id, brand, img = sku_name_mapping[sku_code]
@@ -189,24 +205,25 @@ def clean_and_import_data():
             
     # BỔ SUNG: 3 hóa đơn đặc trưng của sếp
     custom_orders = [
-        (91001, 9001, 34990000.00, 'ĐÃ THANH TOÁN', 'Credit Card', 'Standard', '2026-05-20 10:30:00'),
-        (91002, 9002, 27990000.00, 'ĐÃ THANH TOÁN', 'VNPay Wallet', 'Express', '2026-05-22 14:15:00'),
-        (91003, 9003, 10490000.00, 'ĐÃ THANH TOÁN', 'Cash', 'Standard', '2026-05-25 09:00:00')
+        (91001, 9001, 24990000.00, 'ĐÃ THANH TOÁN', 'Credit Card', 'Standard', '2026-05-20 10:30:00'),
+        (91002, 9002, 23990000.00, 'ĐÃ THANH TOÁN', 'VNPay Wallet', 'Express', '2026-05-22 14:15:00'),
+        (91003, 9003, 6490000.00, 'ĐÃ THANH TOÁN', 'Cash', 'Standard', '2026-05-25 09:00:00')
     ]
     order_batch.extend(custom_orders)
 
     # Lấy thông tin giá và ID của sản phẩm để map chính xác order_items
     sku_prices = {}
     for _, row in unique_skus.iterrows():
-        sku_prices[str(row['SKU'])] = float(row['Unit Price']) * 25000
+        sc = str(row['SKU'])
+        sku_prices[sc] = real_prices.get(sc, float(row['Unit Price']) * 25000)
         
     p_id_1001 = sku_to_db_id.get('SKU1001', 1)
     p_id_1004 = sku_to_db_id.get('SKU1004', 1)
     p_id_567 = sku_to_db_id.get('SWT567', 1)
     
-    price_1001 = sku_prices.get('SKU1001', 34990000.00)
-    price_1004 = sku_prices.get('SKU1004', 27990000.00)
-    price_567 = sku_prices.get('SWT567', 10490000.00)
+    price_1001 = sku_prices.get('SKU1001', 24990000.00)
+    price_1004 = sku_prices.get('SKU1004', 23990000.00)
+    price_567 = sku_prices.get('SWT567', 6490000.00)
     
     custom_items = [
         (91001, p_id_1001, 1, price_1001, 'None', 0.00),

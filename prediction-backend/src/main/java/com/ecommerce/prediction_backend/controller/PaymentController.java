@@ -20,14 +20,14 @@ public class PaymentController {
     private final String vnp_ReturnUrl = "http://localhost:5173/"; // Link trả về web React 
 
     @GetMapping("/create_url")
-    public Map<String, String> createPaymentUrl(@RequestParam("amount") double amountDouble, @RequestParam("orderId") String orderId) {
+    public Map<String, String> createPaymentUrl(@RequestParam("amount") double amount, @RequestParam("orderId") String orderId) {
         try {
-            long amount = (long) amountDouble;
+            long finalAmount = (long) amount;
             Map<String, String> vnp_Params = new HashMap<>();
             vnp_Params.put("vnp_Version", "2.1.0");
             vnp_Params.put("vnp_Command", "pay");
             vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
-            vnp_Params.put("vnp_Amount", String.valueOf(amount * 100)); // VNPay yêu cầu nhân 100
+            vnp_Params.put("vnp_Amount", String.valueOf(finalAmount * 100)); // VNPay yêu cầu nhân 100
             vnp_Params.put("vnp_CurrCode", "VND");
             
             vnp_Params.put("vnp_TxnRef", orderId + "_" + System.currentTimeMillis()); 
