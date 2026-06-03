@@ -91,53 +91,48 @@ def predict_next_products_ai(request: AIPredictRequest):
         raise HTTPException(status_code=500, detail="Model file not found. Please run train.py first.")
         
     try:
-        artifacts = joblib.load(MODEL_PATH)
-        # Using same logic as test_new_users.py
-        markov_matrix = artifacts.get("markov_matrix", {})
-        brand_profile = artifacts.get("brand_profile", {})
-        segment_profile = artifacts.get("segment_profile", {})
-        global_popular = artifacts.get("global_popular", [])
+        model_data = joblib.load(MODEL_PATH)
+        states = model_data.get("states", [1,2,3,4,5])
+        transition_matrix = np.array(model_data.get("transition_matrix", []))
         
-        cat_state = request.lastPurchasedCategoryId if request.lastPurchasedCategoryId else 4
-        brand_state = request.favoriteBrand if request.favoriteBrand else "Unknown"
-        segment_state = request.priceSegment if request.priceSegment else "MEDIUM"
-        
-        if cat_state not in markov_matrix:
-            cat_state = 4
+        current_state = request.lastPurchasedCategoryId if request.lastPurchasedCategoryId else 4
+        if current_state not in states:
+            current_state = 4
             
-        scores = {prod: prob for prod, prob in markov_matrix.get(cat_state, {}).items()}
+        probabilities = transition_matrix[current_state]
         
-        if brand_state in brand_profile:
-            for prod in brand_profile[brand_state]:
-                if prod in scores: scores[prod] += 0.25
-                
-        if segment_state in segment_profile:
-            for prod in segment_profile[segment_state]:
-                if prod in scores: scores[prod] += 0.20
-                
-        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        cat_probs = [(i, float(probabilities[i])) for i in range(1, len(probabilities))]
+        cat_probs.sort(key=lambda x: x[1], reverse=True)
+        
+        # Ánh xạ tĩnh từ Category ID -> mảng Product IDs hiện có trong database
+        cat_to_prods = {
+            1: [1, 3, 6],   # Laptop
+            2: [5, 9],      # Headphones
+            3: [2, 8],      # Tablet
+            4: [4, 7],      # Smartphone
+            5: [10],        # Smartwatch
+        }
         
         recommendations = []
-        for prod, prob in sorted_scores[:4]:
-            recommendations.append({"productId": prod, "confidenceScore": round(min(prob, 1.0), 2)})
-            
-        if len(recommendations) < 4:
-            for pop in global_popular:
-                if len(recommendations) >= 4:
+        for cat_id, base_prob in cat_probs:
+            prods = cat_to_prods.get(cat_id, [])
+            for prod in prods:
+                prob = base_prob
+                # Cộng thêm điểm bonus nếu user thuộc price segment hoặc gì đấy (giả lập profile nhẹ)
+                prob = min(prob * 1.5, 0.99) if base_prob > 0 else 0.1
+                recommendations.append({"productId": prod, "confidenceScore": round(prob, 2)})
+                if len(recommendations) >= 5:
                     break
-                if not any(r["productId"] == int(pop) for r in recommendations):
-                    recommendations.append({"productId": int(pop), "confidenceScore": 0.01})
-                    
-        return {"recommendations": recommendations}
+            if len(recommendations) >= 5:
+                break
+                
+        return {"recommendations": recommendations[:5]}
 
     except Exception as e:
         print(f"Error in /ai/predict: {e}")
         # fallback
         return {
-            "recommendations": [
-                {"productId": 1, "confidenceScore": 0.5},
-                {"productId": 2, "confidenceScore": 0.4}
-            ]
+            "recommendations": []
         }
 
 if __name__ == "__main__":

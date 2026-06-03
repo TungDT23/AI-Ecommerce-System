@@ -2,6 +2,13 @@ import pandas as pd
 import mysql.connector
 import bcrypt
 import numpy as np
+import sys
+import io
+
+# Đảm bảo in Tiếng Việt không bị lỗi font trên Windows
+if hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 
 # 1. CẤU HÌNH KẾT NỐI DATABASE MYSQL CỦA SẾP
 db_config = {
@@ -50,6 +57,10 @@ def clean_and_import_data():
     
     for _, row in unique_users.iterrows():
         c_id = int(row['Customer ID'])
+        # Bỏ qua các ID trùng lặp với tài khoản đặc trưng của sếp
+        if c_id in [999, 9001, 9002, 9003]:
+            continue
+            
         username = f"customer_{c_id}"
         gender_vn = "Nữ" if row['Gender'] == "Female" else "Nam"
         loc = locations_pool[c_id % len(locations_pool)]
@@ -58,6 +69,15 @@ def clean_and_import_data():
             c_id, username, f"Khách Hàng {c_id}", f"customer{c_id}@gmail.com",
             hashed_pwd, "USER", int(row['Age']), gender_vn, loc, row['Loyalty Member']
         ))
+    
+    # BỔ SUNG: 4 tài khoản đặc trưng của sếp
+    custom_users = [
+        (999, 'adminvip', 'Đặng Thanh Tùng (Admin)', 'tungdang.admin@cellphones.com.vn', hashed_pwd, 'ADMIN', 22, 'Nam', 'Hà Nội', 'No'),
+        (9001, 'hoang_khuat', 'Khuất Mạnh Hoàng', 'hoangkm@gmail.com', hashed_pwd, 'USER', 23, 'Nam', 'Hà Nội', 'Yes'),
+        (9002, 'linh_tran', 'Trần Tuấn Linh', 'linhtt@gmail.com', hashed_pwd, 'USER', 24, 'Nam', 'TP. Hồ Chí Minh', 'No'),
+        (9003, 'long_trinh', 'Trịnh Huy Long', 'longth@gmail.com', hashed_pwd, 'USER', 22, 'Nam', 'Đà Nẵng', 'Yes')
+    ]
+    user_batch.extend(custom_users)
     
     cursor.executemany(sql_user, user_batch)
     conn.commit()
@@ -72,15 +92,15 @@ def clean_and_import_data():
     # Định nghĩa Bản đồ sản phẩm tiếng Việt cho các SKU có sẵn trong file
     sku_name_mapping = {
         'SKU1001': ('iPhone 15 Pro Max 256GB', 4, 'Apple', 'https://cdn2.cellphones.com.vn/insecure/rs:fill:358:358/q:90/plain/https://cellphones.com.vn/media/catalog/product/i/p/iphone-15-pro-max_3.png'),
-        'SKU1002': ('iPad Air 6 M2 11 inch', 3, 'Samsung', 'https://cdn2.cellphones.com.vn/images/product/tablet/ipad-air-6.png'), # Map thương hiệu tương đối theo tệp
-        'SKU1003': ('Sony WH-1000XM5 Premium', 2, 'Sony', 'https://cdn2.cellphones.com.vn/images/product/accessories/sony-wh-1000xm5.png'),
-        'SKU1004': ('MacBook Air 13 inch M3', 1, 'HP', 'https://cdn2.cellphones.com.vn/images/product/laptop/macbook-air-m3.png'),
-        'SKU1005': ('Asus ROG Strix G16 Gaming', 1, 'Other Brands', 'https://cdn2.cellphones.com.vn/images/product/laptop/asus-rog.png'),
-        'HDP456': ('Tai nghe Bluetooth Marshall Major IV', 2, 'Other Brands', 'https://cdn2.cellphones.com.vn/images/product/accessories/marshall-major-4.png'),
-        'LTP123': ('Laptop HP Pavilion 14 X360', 1, 'HP', 'https://cdn2.cellphones.com.vn/images/product/laptop/hp-pavilion.png'),
-        'SMP234': ('Samsung Galaxy S24 Ultra 5G', 4, 'Samsung', 'https://cdn2.cellphones.com.vn/images/product/mobile/samsung-s24.png'),
-        'SWT567': ('Apple Watch Series 9 45mm LTE', 5, 'Other Brands', 'https://cdn2.cellphones.com.vn/images/product/watch/apple-watch-9.png'),
-        'TBL345': ('Xiaomi Pad 6 Quốc Tế', 3, 'Other Brands', 'https://cdn2.cellphones.com.vn/images/product/tablet/xiaomi-pad-6.png')
+        'SKU1002': ('iPad Air 6 M2 11 inch', 3, 'Apple', 'https://i5.walmartimages.com/seo/2024-Apple-11-inch-iPad-Air-M2-Wi-Fi-128GB-Blue_1512612b-3f81-4661-9b5a-b6e30501ff99.2caff370b34b2a95cde52509e02f68b9.jpeg'), # Map thương hiệu tương đối theo tệp
+        'SKU1003': ('Sony WH-1000XM5 Premium', 2, 'Sony', 'https://i5.walmartimages.com/seo/Sony-WH-1000XM5-The-Best-Wireless-Noise-Canceling-Headphones-Black_7384c879-1d54-47e8-9876-1d7adadcf0a5.542c245c25d295b30fa5820eacea4450.jpeg'),
+        'SKU1004': ('MacBook Air 13 inch M3', 1, 'Apple', 'https://dam.which.co.uk/IC19565-0716-00-front-800x600.jpg'),
+        'SKU1005': ('Asus ROG Strix G16 Gaming', 1, 'Other Brands', 'https://www.bluelynxonline.com/30915-thickbox_default/asus-rog-strix-g16-gaming-laptop.jpg'),
+        'HDP456': ('Tai nghe Bluetooth Marshall Major IV', 2, 'Other Brands', 'https://tainghe.com.vn/media/product/3560_marshall_major_iv_4_black_chinh_hang_1_1.jpg'),
+        'LTP123': ('Laptop HP Pavilion 14 X360', 1, 'HP', 'https://pisces.bbystatic.com/image2/BestBuy_US/images/products/6428/6428661_rd.jpg'),
+        'SMP234': ('Samsung Galaxy S24 Ultra 5G', 4, 'Samsung', 'https://www.phonebot.com.au/image/cache/catalog/refurbished/samsung/galaxy-s24-ultra/samsung-galaxy-s24-ultra-titanium-black-800x800.jpg'),
+        'SWT567': ('Apple Watch Series 9 45mm LTE', 5, 'Apple', 'https://cdn.dienthoaigiakho.vn/photos/1694674137075-AW-S9-SS-LTE-Go2.jpg'),
+        'TBL345': ('Xiaomi Pad 6 Quốc Tế', 3, 'Other Brands', 'https://chiasetech.com/wp-content/uploads/2023/06/xiaomi-pad-6-2.jpg')
     }
     
     sql_prod = """
@@ -94,7 +114,8 @@ def clean_and_import_data():
     
     for _, row in unique_skus.iterrows():
         sku_code = str(row['SKU'])
-        price_val = float(row['Unit Price'])
+        # Nhân với tỷ giá 25000 để chuyển đổi từ USD sang VND cho hợp lý
+        price_val = float(row['Unit Price']) * 25000
         
         if sku_code in sku_name_mapping:
             p_name, cat_id, brand, img = sku_name_mapping[sku_code]
@@ -144,22 +165,55 @@ def clean_and_import_data():
         # Đồng bộ trạng thái hóa đơn tiếng Việt
         status_vn = "HỦY ĐƠN" if row['Order Status'] == "Cancelled" else "ĐÃ THANH TOÁN"
         
+        # Chuyển đổi Total Price sang VND
+        total_price_vnd = float(row['Total Price']) * 25000
+        
         # Đưa vào danh sách nạp bảng orders
         order_batch.append((
-            o_id, u_id, float(row['Total Price']), status_vn,
+            o_id, u_id, total_price_vnd, status_vn,
             str(row['Payment Method']), str(row['Shipping Type']), str(row['Purchase Date'])
         ))
         
         # Đưa vào danh sách nạp bảng chi tiết order_items
         addons = str(row['Add-ons Purchased']) if pd.notna(row['Add-ons Purchased']) else "None"
+        unit_price_vnd = float(row['Unit Price']) * 25000
+        addon_total_vnd = float(row['Add-on Total']) * 25000
         item_batch.append((
-            o_id, p_id, int(row['Quantity']), float(row['Unit Price']), addons, float(row['Add-on Total'])
+            o_id, p_id, int(row['Quantity']), unit_price_vnd, addons, addon_total_vnd
         ))
         
         # Chỉ sinh log review cho những đơn hàng đã hoàn thành thực tế để logic chặt chẽ
         if row['Order Status'] == "Completed":
             comment_text = f"Sản phẩm dùng rất tốt, đánh giá {row['Rating']} sao cho cửa hàng!"
             review_batch.append((u_id, p_id, int(row['Rating']), comment_text))
+            
+    # BỔ SUNG: 3 hóa đơn đặc trưng của sếp
+    custom_orders = [
+        (91001, 9001, 34990000.00, 'ĐÃ THANH TOÁN', 'Credit Card', 'Standard', '2026-05-20 10:30:00'),
+        (91002, 9002, 27990000.00, 'ĐÃ THANH TOÁN', 'VNPay Wallet', 'Express', '2026-05-22 14:15:00'),
+        (91003, 9003, 10490000.00, 'ĐÃ THANH TOÁN', 'Cash', 'Standard', '2026-05-25 09:00:00')
+    ]
+    order_batch.extend(custom_orders)
+
+    # Lấy thông tin giá và ID của sản phẩm để map chính xác order_items
+    sku_prices = {}
+    for _, row in unique_skus.iterrows():
+        sku_prices[str(row['SKU'])] = float(row['Unit Price']) * 25000
+        
+    p_id_1001 = sku_to_db_id.get('SKU1001', 1)
+    p_id_1004 = sku_to_db_id.get('SKU1004', 1)
+    p_id_567 = sku_to_db_id.get('SWT567', 1)
+    
+    price_1001 = sku_prices.get('SKU1001', 34990000.00)
+    price_1004 = sku_prices.get('SKU1004', 27990000.00)
+    price_567 = sku_prices.get('SWT567', 10490000.00)
+    
+    custom_items = [
+        (91001, p_id_1001, 1, price_1001, 'None', 0.00),
+        (91002, p_id_1004, 1, price_1004, 'None', 0.00),
+        (91003, p_id_567, 1, price_567, 'None', 0.00)
+    ]
+    item_batch.extend(custom_items)
             
     # Tiến hành bơm dữ liệu lớn theo lô (Batches) để tối ưu tốc độ RAM
     cursor.executemany(sql_order, order_batch)

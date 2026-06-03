@@ -27,7 +27,7 @@ public class OrderItem {
 
     private Integer quantity = 1;
 
-    @Column(name = "price_at_purchase", precision = 10, scale = 2)
+    @Column(name = "price_at_purchase", precision = 15, scale = 2)
     private BigDecimal priceAtPurchase;
 
     // BỔ SUNG 1: Khớp trường lưu danh sách phụ kiện mua kèm (Accessories, Extended Warranty...) từ Dataset xịn
@@ -35,6 +35,6 @@ public class OrderItem {
     private String addonsPurchased;
 
     // BỔ SUNG 2: Khớp trường tổng tiền của phụ kiện mua kèm theo đơn hàng
-    @Column(name = "addon_total", precision = 10, scale = 2)
+    @Column(name = "addon_total", precision = 15, scale = 2)
     private BigDecimal addonTotal;
 }
